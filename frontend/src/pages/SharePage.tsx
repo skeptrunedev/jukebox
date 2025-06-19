@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
-import type { FormEvent } from 'react'
-import { useParams } from 'react-router-dom'
-
-import { Input } from '@/components/ui/8bit/input'
-import { Button } from '@/components/ui/8bit/button'
+import { useState, useEffect } from "react";
+import type { FormEvent } from "react";
+import { useParams } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableHeader,
@@ -11,82 +10,93 @@ import {
   TableHead,
   TableBody,
   TableCell,
-} from '@/components/ui/8bit/table'
-import { getBox, getBoxSongs, getSongs, createSong, createBoxSong } from '@/sdk'
+} from "@/components/ui/table";
+import {
+  getBox,
+  getBoxSongs,
+  getSongs,
+  createSong,
+  createBoxSong,
+} from "@/sdk";
 
 interface SongRow {
-  id: string
-  position: number
-  title?: string
-  artist?: string | null
+  id: string;
+  position: number;
+  title?: string;
+  artist?: string | null;
 }
 
 export default function SharePage() {
-  const { boxId } = useParams<{ boxId: string }>()
-  const [boxName, setBoxName] = useState('')
-  const [rows, setRows] = useState<SongRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [title, setTitle] = useState('')
-  const [artist, setArtist] = useState('')
-  const [isAdding, setIsAdding] = useState(false)
+  const { boxId } = useParams<{ boxId: string }>();
+  const [boxName, setBoxName] = useState("");
+  const [rows, setRows] = useState<SongRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [title, setTitle] = useState("");
+  const [artist, setArtist] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
-    if (!boxId) return
-    setLoading(true)
-    ;(async () => {
+    if (!boxId) return;
+    setLoading(true);
+    (async () => {
       try {
         const [box, boxSongs, songs] = await Promise.all([
           getBox(boxId),
           getBoxSongs(),
           getSongs(),
-        ])
-        setBoxName(box.name ?? '')
+        ]);
+        setBoxName(box.name ?? "");
         const filtered = boxSongs
           .filter((bs) => bs.box_id === boxId)
-          .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-        const songMap = new Map(songs.map((s) => [s.id, s]))
+          .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+        const songMap = new Map(songs.map((s) => [s.id, s]));
         setRows(
           filtered.map((bs) => ({
-            id: bs.id || '',
+            id: bs.id || "",
             position: bs.position ?? 0,
-            title: songMap.get(bs.song_id || '')?.title,
-            artist: songMap.get(bs.song_id || '')?.artist,
+            title: songMap.get(bs.song_id || "")?.title,
+            artist: songMap.get(bs.song_id || "")?.artist,
           }))
-        )
+        );
       } catch (error) {
-        console.error('Error loading share data:', error)
+        console.error("Error loading share data:", error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    })()
-  }, [boxId])
+    })();
+  }, [boxId]);
 
   const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!boxId || !title) return
-    setIsAdding(true)
+    e.preventDefault();
+    if (!boxId || !title) return;
+    setIsAdding(true);
     try {
-      const song = await createSong({ title, artist: artist || undefined })
+      const song = await createSong({ title, artist: artist || undefined });
       const relation = await createBoxSong({
         box_id: boxId,
-        song_id: song.id || '',
+        song_id: song.id || "",
         position: rows.length,
-      })
+      });
       setRows((prev) => [
         ...prev,
-        { id: relation.id || '', position: relation.position ?? 0, title: song.title, artist: song.artist },
-      ])
-      setTitle('')
-      setArtist('')
+        {
+          id: relation.id || "",
+          position: relation.position ?? 0,
+          title: song.title,
+          artist: song.artist,
+        },
+      ]);
+      setTitle("");
+      setArtist("");
     } catch (error) {
-      console.error('Error adding song:', error)
+      console.error("Error adding song:", error);
     } finally {
-      setIsAdding(false)
+      setIsAdding(false);
     }
-  }
+  };
 
   if (loading) {
-    return <div>Loading...</div>
+    return <div>Loading...</div>;
   }
 
   return (
@@ -105,7 +115,7 @@ export default function SharePage() {
           onChange={(e) => setArtist(e.currentTarget.value)}
         />
         <Button type="submit" disabled={isAdding}>
-          {isAdding ? 'Adding...' : 'Add Song'}
+          {isAdding ? "Adding..." : "Add Song"}
         </Button>
       </form>
 
@@ -128,5 +138,5 @@ export default function SharePage() {
         </TableBody>
       </Table>
     </div>
-  )
+  );
 }

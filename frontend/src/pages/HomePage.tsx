@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { Button } from "@/components/ui/8bit/button";
+import { Button } from "@/components/ui/button";
 import { createBox } from "@/sdk";
 import { siX, siInstagram, siGithub } from "simple-icons";
 import {
@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardContent,
   CardFooter,
-} from "@/components/ui/8bit/card";
+} from "@/components/ui/card";
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -82,7 +82,7 @@ export default function HomePage() {
           </div>
         </CardContent>
         <CardFooter className="flex space-x-4 justify-center">
-          <Button asChild variant="secondary">
+          <Button asChild variant="neutral">
             <a
               href="https://github.com/skeptrunedev/jukebox"
               target="_blank"
