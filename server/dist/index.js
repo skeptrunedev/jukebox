@@ -3,15 +3,92 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     Box:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *         name:
+ *           type: string
+ *     Song:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *         title:
+ *           type: string
+ *         artist:
+ *           type: string
+ *           nullable: true
+ *     BoxSong:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *         box_id:
+ *           type: string
+ *         song_id:
+ *           type: string
+ *         position:
+ *           type: integer
+ */
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const db_1 = __importDefault(require("./db"));
 const crypto_1 = require("crypto");
 const kysely_1 = require("kysely");
+const swagger_1 = require("./swagger");
 const app = (0, express_1.default)();
 const port = process.env.PORT || 3001;
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
+(0, swagger_1.setupSwagger)(app);
+/**
+ * @openapi
+ * /api/boxes:
+ *   get:
+ *     tags:
+ *       - Boxes
+ *     summary: Get a paginated list of boxes
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *     responses:
+ *       200:
+ *         description: Paginated list of boxes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Box'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ */
 app.get("/api/boxes", async (req, res, _next) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -42,6 +119,29 @@ app.get("/api/boxes", async (req, res, _next) => {
         res.status(500).json({ error: error.message });
     }
 });
+/**
+ * @openapi
+ * /api/boxes/{id}:
+ *   get:
+ *     tags:
+ *       - Boxes
+ *     summary: Get a single box by ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: A box object
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Box'
+ *       404:
+ *         description: Box not found
+ */
 app.get("/api/boxes/:id", async (req, res, _next) => {
     try {
         const box = await db_1.default
@@ -58,6 +158,32 @@ app.get("/api/boxes/:id", async (req, res, _next) => {
         res.status(500).json({ error: error.message });
     }
 });
+/**
+ * @openapi
+ * /api/boxes:
+ *   post:
+ *     tags:
+ *       - Boxes
+ *     summary: Create a new box
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *             required:
+ *               - name
+ *     responses:
+ *       201:
+ *         description: Created box
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Box'
+ */
 app.post("/api/boxes", async (req, res, _next) => {
     try {
         const id = (0, crypto_1.randomUUID)();
@@ -69,6 +195,40 @@ app.post("/api/boxes", async (req, res, _next) => {
         res.status(500).json({ error: error.message });
     }
 });
+/**
+ * @openapi
+ * /api/boxes/{id}:
+ *   put:
+ *     tags:
+ *       - Boxes
+ *     summary: Update a box's name
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *             required:
+ *               - name
+ *     responses:
+ *       200:
+ *         description: Updated box
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Box'
+ *       404:
+ *         description: Box not found
+ */
 app.put("/api/boxes/:id", async (req, res, _next) => {
     try {
         const { name } = req.body;
@@ -91,6 +251,25 @@ app.put("/api/boxes/:id", async (req, res, _next) => {
         res.status(500).json({ error: error.message });
     }
 });
+/**
+ * @openapi
+ * /api/boxes/{id}:
+ *   delete:
+ *     tags:
+ *       - Boxes
+ *     summary: Delete a box by ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       204:
+ *         description: No content (box deleted)
+ *       404:
+ *         description: Box not found
+ */
 app.delete("/api/boxes/:id", async (req, res, _next) => {
     try {
         const deletedRows = await db_1.default
@@ -106,6 +285,23 @@ app.delete("/api/boxes/:id", async (req, res, _next) => {
         res.status(500).json({ error: error.message });
     }
 });
+/**
+ * @openapi
+ * /api/songs:
+ *   get:
+ *     tags:
+ *       - Songs
+ *     summary: Get all songs
+ *     responses:
+ *       200:
+ *         description: A list of songs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Song'
+ */
 app.get("/api/songs", async (req, res, _next) => {
     try {
         const songs = await db_1.default.selectFrom("songs").selectAll().execute();
@@ -115,6 +311,29 @@ app.get("/api/songs", async (req, res, _next) => {
         res.status(500).json({ error: error.message });
     }
 });
+/**
+ * @openapi
+ * /api/songs/{id}:
+ *   get:
+ *     tags:
+ *       - Songs
+ *     summary: Get a song by ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: A song object
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Song'
+ *       404:
+ *         description: Song not found
+ */
 app.get("/api/songs/:id", async (req, res, _next) => {
     try {
         const song = await db_1.default
@@ -131,6 +350,34 @@ app.get("/api/songs/:id", async (req, res, _next) => {
         res.status(500).json({ error: error.message });
     }
 });
+/**
+ * @openapi
+ * /api/songs:
+ *   post:
+ *     tags:
+ *       - Songs
+ *     summary: Create a new song
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               artist:
+ *                 type: string
+ *             required:
+ *               - title
+ *     responses:
+ *       201:
+ *         description: Created song
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Song'
+ */
 app.post("/api/songs", async (req, res, _next) => {
     try {
         const id = (0, crypto_1.randomUUID)();
@@ -142,6 +389,42 @@ app.post("/api/songs", async (req, res, _next) => {
         res.status(500).json({ error: error.message });
     }
 });
+/**
+ * @openapi
+ * /api/songs/{id}:
+ *   put:
+ *     tags:
+ *       - Songs
+ *     summary: Update a song by ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               artist:
+ *                 type: string
+ *             required:
+ *               - title
+ *     responses:
+ *       200:
+ *         description: Updated song
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Song'
+ *       404:
+ *         description: Song not found
+ */
 app.put("/api/songs/:id", async (req, res, _next) => {
     try {
         const { title, artist } = req.body;
@@ -164,6 +447,25 @@ app.put("/api/songs/:id", async (req, res, _next) => {
         res.status(500).json({ error: error.message });
     }
 });
+/**
+ * @openapi
+ * /api/songs/{id}:
+ *   delete:
+ *     tags:
+ *       - Songs
+ *     summary: Delete a song by ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       204:
+ *         description: No content (song deleted)
+ *       404:
+ *         description: Song not found
+ */
 app.delete("/api/songs/:id", async (req, res, _next) => {
     try {
         const deletedRows = await db_1.default
@@ -179,6 +481,23 @@ app.delete("/api/songs/:id", async (req, res, _next) => {
         res.status(500).json({ error: error.message });
     }
 });
+/**
+ * @openapi
+ * /api/box_songs:
+ *   get:
+ *     tags:
+ *       - BoxSongs
+ *     summary: Get all box-song relationships
+ *     responses:
+ *       200:
+ *         description: A list of box-song relations
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/BoxSong'
+ */
 app.get("/api/box_songs", async (req, res, _next) => {
     try {
         const rels = await db_1.default.selectFrom("box_songs").selectAll().execute();
@@ -188,6 +507,29 @@ app.get("/api/box_songs", async (req, res, _next) => {
         res.status(500).json({ error: error.message });
     }
 });
+/**
+ * @openapi
+ * /api/box_songs/{id}:
+ *   get:
+ *     tags:
+ *       - BoxSongs
+ *     summary: Get a specific box-song relationship by ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Box-song relation object
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BoxSong'
+ *       404:
+ *         description: Relation not found
+ */
 app.get("/api/box_songs/:id", async (req, res, _next) => {
     try {
         const rel = await db_1.default
@@ -204,6 +546,38 @@ app.get("/api/box_songs/:id", async (req, res, _next) => {
         res.status(500).json({ error: error.message });
     }
 });
+/**
+ * @openapi
+ * /api/box_songs:
+ *   post:
+ *     tags:
+ *       - BoxSongs
+ *     summary: Create a new box-song relationship
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               box_id:
+ *                 type: string
+ *               song_id:
+ *                 type: string
+ *               position:
+ *                 type: integer
+ *             required:
+ *               - box_id
+ *               - song_id
+ *               - position
+ *     responses:
+ *       201:
+ *         description: Created box-song relation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BoxSong'
+ */
 app.post("/api/box_songs", async (req, res, _next) => {
     try {
         const id = (0, crypto_1.randomUUID)();
@@ -218,6 +592,42 @@ app.post("/api/box_songs", async (req, res, _next) => {
         res.status(500).json({ error: error.message });
     }
 });
+/**
+ * @openapi
+ * /api/box_songs/{id}:
+ *   put:
+ *     tags:
+ *       - BoxSongs
+ *     summary: Update a box-song relationship
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               box_id:
+ *                 type: string
+ *               song_id:
+ *                 type: string
+ *               position:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Updated box-song relation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BoxSong'
+ *       404:
+ *         description: Relation not found
+ */
 app.put("/api/box_songs/:id", async (req, res, _next) => {
     try {
         const { box_id, song_id, position } = req.body;
@@ -247,6 +657,25 @@ app.put("/api/box_songs/:id", async (req, res, _next) => {
         res.status(500).json({ error: error.message });
     }
 });
+/**
+ * @openapi
+ * /api/box_songs/{id}:
+ *   delete:
+ *     tags:
+ *       - BoxSongs
+ *     summary: Delete a box-song relation by ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       204:
+ *         description: No content (relation deleted)
+ *       404:
+ *         description: Relation not found
+ */
 app.delete("/api/box_songs/:id", async (req, res, _next) => {
     try {
         const deletedRows = await db_1.default
