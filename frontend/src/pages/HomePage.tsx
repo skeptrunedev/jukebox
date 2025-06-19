@@ -1,100 +1,53 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-import { Button } from "@/components/ui/button";
-import { createBox } from "@/sdk";
-import { siX, siInstagram, siGithub } from "simple-icons";
 import {
   Card,
-  CardHeader,
   CardContent,
-  CardFooter,
-} from "@/components/ui/card";
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "../components/ui/card";
+import { createBox } from "../sdk";
+import { names } from "../assets/cool-names";
+import { CreateBoxDialog } from "../components/CreateBoxDialog";
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const [isCreating, setIsCreating] = useState(false);
 
-  const handleCreate = async () => {
-    setIsCreating(true);
+  // Function to get a random cool name
+  const getRandomCoolName = () => {
+    return names[Math.floor(Math.random() * names.length)];
+  };
+
+  const handleCreateJukebox = async (name: string) => {
     try {
-      const box = await createBox({ name: "My Jukebox" });
+      const box = await createBox({ name });
       if (box.id) {
         navigate(`/play/${box.id}`);
       }
     } catch (error) {
       console.error("Failed to create box:", error);
-    } finally {
-      setIsCreating(false);
+      throw error; // Re-throw to let the dialog handle the error
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen px-4">
-      <Card>
+    <div className="flex flex-1 items-center justify-center px-5 w-full bg-background/40">
+      <Card className="text-center bg-white w-full max-w-2xl">
         <CardHeader>
-          <h1 className="text-4xl font-bold">Jukebox</h1>
+          <CardTitle className="text-4xl md:text-6xl font-bold text-foreground mb-4">
+            Turn your phone into a jukebox
+          </CardTitle>
+          <CardDescription className="text-lg md:text-xl text-muted-foreground leading-relaxed">
+            Share a link with your friends and let the whole group
+            collaboratively add songs
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex space-x-6 justify-center">
-            <a
-              href="https://twitter.com/usejukebox"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d={siX.path} />
-              </svg>
-            </a>
-            <a
-              href="https://instagram.com/usejukebox"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d={siInstagram.path} />
-              </svg>
-            </a>
-            <a
-              href="https://github.com/skeptrunedev/jukebox"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d={siGithub.path} />
-              </svg>
-            </a>
-          </div>
+        <CardContent className="flex justify-center">
+          <CreateBoxDialog
+            onCreate={handleCreateJukebox}
+            defaultName={getRandomCoolName()}
+          />
         </CardContent>
-        <CardFooter className="flex space-x-4 justify-center">
-          <Button asChild variant="neutral">
-            <a
-              href="https://github.com/skeptrunedev/jukebox"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Star us
-            </a>
-          </Button>
-          <Button onClick={handleCreate} disabled={isCreating}>
-            {isCreating ? "Creating..." : "Create Jukebox"}
-          </Button>
-        </CardFooter>
       </Card>
     </div>
   );
