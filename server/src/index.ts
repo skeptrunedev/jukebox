@@ -151,7 +151,7 @@ app.get("/api/boxes/:id", async (req, res, _next: NextFunction) => {
       .where("id", "=", req.params.id)
       .executeTakeFirst();
     if (!box) {
-      return res.status(404).json({ error: "Box not found" });
+      return void res.status(404).json({ error: "Box not found" });
     }
     res.json(box);
   } catch (error) {
@@ -239,7 +239,7 @@ app.put("/api/boxes/:id", async (req, res, _next: NextFunction) => {
       .where("id", "=", req.params.id)
       .execute();
     if (!updatedRows.length) {
-      return res.status(404).json({ error: "Box not found" });
+      return void res.status(404).json({ error: "Box not found" });
     }
     const box = await db
       .selectFrom("boxes")
@@ -278,7 +278,7 @@ app.delete("/api/boxes/:id", async (req, res, _next: NextFunction) => {
       .where("id", "=", req.params.id)
       .execute();
     if (!deletedRows.length) {
-      return res.status(404).json({ error: "Box not found" });
+      return void res.status(404).json({ error: "Box not found" });
     }
     res.status(204).end();
   } catch (error) {
@@ -343,7 +343,7 @@ app.get("/api/songs/:id", async (req, res, _next: NextFunction) => {
       .where("id", "=", req.params.id)
       .executeTakeFirst();
     if (!song) {
-      return res.status(404).json({ error: "Song not found" });
+      return void res.status(404).json({ error: "Song not found" });
     }
     res.json(song);
   } catch (error) {
@@ -435,7 +435,7 @@ app.put("/api/songs/:id", async (req, res, _next: NextFunction) => {
       .where("id", "=", req.params.id)
       .execute();
     if (!updatedRows.length) {
-      return res.status(404).json({ error: "Song not found" });
+      return void res.status(404).json({ error: "Song not found" });
     }
     const song = await db
       .selectFrom("songs")
@@ -474,7 +474,7 @@ app.delete("/api/songs/:id", async (req, res, _next: NextFunction) => {
       .where("id", "=", req.params.id)
       .execute();
     if (!deletedRows.length) {
-      return res.status(404).json({ error: "Song not found" });
+      return void res.status(404).json({ error: "Song not found" });
     }
     res.status(204).end();
   } catch (error) {
@@ -539,7 +539,7 @@ app.get("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
       .where("id", "=", req.params.id)
       .executeTakeFirst();
     if (!rel) {
-      return res.status(404).json({ error: "Relation not found" });
+      return void res.status(404).json({ error: "Relation not found" });
     }
     res.json(rel);
   } catch (error) {
@@ -642,7 +642,7 @@ app.put("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
       .where("id", "=", req.params.id)
       .execute();
     if (!updatedRows.length) {
-      return res.status(404).json({ error: "Relation not found" });
+      return void res.status(404).json({ error: "Relation not found" });
     }
     const rel = await db
       .selectFrom("box_songs")
@@ -681,7 +681,7 @@ app.delete("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
       .where("id", "=", req.params.id)
       .execute();
     if (!deletedRows.length) {
-      return res.status(404).json({ error: "Relation not found" });
+      return void res.status(404).json({ error: "Relation not found" });
     }
     res.status(204).end();
   } catch (error) {
@@ -689,6 +689,10 @@ app.delete("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server is running at http://localhost:${port}`);
-});
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`Server is running at http://localhost:${port}`);
+  });
+}
+
+export default app;

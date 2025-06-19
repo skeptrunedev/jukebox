@@ -3,7 +3,7 @@
 [![NPM Version][npm-image]][npm-url]
 [![NPM Downloads][downloads-image]][downloads-url]
 [![Node.js Version][node-version-image]][node-version-url]
-[![Build Status][travis-image]][travis-url]
+[![Build Status][ci-image]][ci-url]
 [![Test Coverage][coveralls-image]][coveralls-url]
 
 HTTP response freshness testing
@@ -19,8 +19,6 @@ $ npm install fresh
 ```
 
 ## API
-
-<!-- eslint-disable no-unused-vars -->
 
 ```js
 var fresh = require('fresh')
@@ -42,7 +40,7 @@ to make handling these requests transparent.
 
 This module is designed to only follow the HTTP specifications, not
 to work-around all kinda of client bugs (especially since this module
-typically does not recieve enough information to understand what the
+typically does not receive enough information to understand what the
 client actually is).
 
 There is a known issue that in certain versions of Safari, Safari
@@ -57,16 +55,16 @@ links to further reading on this Safari bug.
 
 ### API usage
 
-<!-- eslint-disable no-redeclare, no-undef -->
+<!-- eslint-disable no-redeclare -->
 
 ```js
 var reqHeaders = { 'if-none-match': '"foo"' }
-var resHeaders = { 'etag': '"bar"' }
+var resHeaders = { etag: '"bar"' }
 fresh(reqHeaders, resHeaders)
 // => false
 
 var reqHeaders = { 'if-none-match': '"foo"' }
-var resHeaders = { 'etag': '"foo"' }
+var resHeaders = { etag: '"foo"' }
 fresh(reqHeaders, resHeaders)
 // => true
 ```
@@ -95,7 +93,7 @@ var server = http.createServer(function (req, res) {
 
 function isFresh (req, res) {
   return fresh(req.headers, {
-    'etag': res.getHeader('ETag'),
+    etag: res.getHeader('ETag'),
     'last-modified': res.getHeader('Last-Modified')
   })
 }
@@ -107,12 +105,12 @@ server.listen(3000)
 
 [MIT](LICENSE)
 
+[ci-image]: https://img.shields.io/github/workflow/status/jshttp/fresh/ci/master?label=ci
+[ci-url]: https://github.com/jshttp/fresh/actions/workflows/ci.yml
 [npm-image]: https://img.shields.io/npm/v/fresh.svg
 [npm-url]: https://npmjs.org/package/fresh
 [node-version-image]: https://img.shields.io/node/v/fresh.svg
 [node-version-url]: https://nodejs.org/en/
-[travis-image]: https://img.shields.io/travis/jshttp/fresh/master.svg
-[travis-url]: https://travis-ci.org/jshttp/fresh
 [coveralls-image]: https://img.shields.io/coveralls/jshttp/fresh/master.svg
 [coveralls-url]: https://coveralls.io/r/jshttp/fresh?branch=master
 [downloads-image]: https://img.shields.io/npm/dm/fresh.svg

@@ -1,7 +1,8 @@
 {
   "name": "server",
   "version": "0.1.0",
-  "private": true,
+  "description": "Backend server for the application",
+  "license": "MIT",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
@@ -9,25 +10,35 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "migrate": "knex migrate:latest",
     "rollback": "knex migrate:rollback",
-    "generate:sdk": "openapi-typescript http://localhost:3001/openapi.json --output ../frontend/src/sdk/api.ts"
+    "generate:sdk": "openapi-typescript http://localhost:3001/openapi.json --output ../frontend/src/sdk/api.ts",
+    "test": "mocha --require ts-node/register tests/api/**/*.test.ts --exit"
   },
   "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.18.2",
-    "knex": "^3.1.0",
-    "sqlite3": "^5.1.6",
     "better-sqlite3": "^11.10.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "knex": "^3.1.0",
     "kysely": "^0.28.2",
+    "sqlite3": "^5.1.6",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^4.6.2"
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.12",
-    "@types/express": "^4.17.17",
-    "@types/node": "^24.0.3",
     "@types/better-sqlite3": "^7.5.0",
+    "@types/chai": "*",
+    "@types/cors": "^2.8.12",
+    "@types/express": "^5.0.3",
+    "@types/mocha": "*",
+    "@types/node": "^24.0.3",
+    "@types/supertest": "*",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
+    "chai": "*",
+    "mocha": "*",
+    "openapi-typescript": "*",
+    "supertest": "*",
+    "ts-node": "*",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.1.6",
-    "openapi-typescript": "*"
+    "typescript": "^5.1.6"
   }
 }

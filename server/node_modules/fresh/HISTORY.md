@@ -1,3 +1,13 @@
+2.0.0 - 2024-09-04
+==========
+ * Drop support for Node.js <18
+
+1.0.0 - 2024-09-04
+==========
+
+  * Drop support for Node.js below 0.8
+  * Fix: Ignore `If-Modified-Since` in the presence of `If-None-Match`, according to [spec](https://www.rfc-editor.org/rfc/rfc9110.html#section-13.1.3-5). Fixes [#35](https://github.com/jshttp/fresh/issues/35)
+
 0.5.2 / 2017-09-13
 ==================
 

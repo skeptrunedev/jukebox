@@ -691,6 +691,9 @@ app.delete("/api/box_songs/:id", async (req, res, _next) => {
         res.status(500).json({ error: error.message });
     }
 });
-app.listen(port, () => {
-    console.log(`Server is running at http://localhost:${port}`);
-});
+if (require.main === module) {
+    app.listen(port, () => {
+        console.log(`Server is running at http://localhost:${port}`);
+    });
+}
+exports.default = app;
