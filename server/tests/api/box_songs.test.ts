@@ -3,8 +3,6 @@ import request from "supertest";
 import app from "../../src/index";
 import { Knex } from "knex";
 import { migrateDb } from "../helpers/db";
-
-// Import Mocha types
 import "mocha";
 
 let knex: Knex;

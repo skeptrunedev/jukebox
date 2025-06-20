@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
-import type { FormEvent } from "react";
 import { useParams } from "react-router-dom";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableHeader,
@@ -18,6 +16,7 @@ import {
   createSong,
   createBoxSong,
 } from "@/sdk";
+import SongSearch from "@/components/SongSearch";
 
 interface SongRow {
   id: string;
@@ -31,9 +30,6 @@ export default function SharePage() {
   const [boxName, setBoxName] = useState("");
   const [rows, setRows] = useState<SongRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [title, setTitle] = useState("");
-  const [artist, setArtist] = useState("");
-  const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
     if (!boxId) return;
@@ -66,12 +62,25 @@ export default function SharePage() {
     })();
   }, [boxId]);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!boxId || !title) return;
-    setIsAdding(true);
+  const handleYouTubeSongSelect = async (songData: {
+    title: string;
+    artist: string;
+    youtube_id: string;
+    youtube_url: string;
+    thumbnail_url: string;
+    duration: number;
+  }) => {
+    if (!boxId) return;
+
     try {
-      const song = await createSong({ title, artist: artist || undefined });
+      const song = await createSong({
+        title: songData.title,
+        artist: songData.artist,
+        youtube_id: songData.youtube_id,
+        youtube_url: songData.youtube_url,
+        thumbnail_url: songData.thumbnail_url,
+        duration: songData.duration,
+      });
       const relation = await createBoxSong({
         box_id: boxId,
         song_id: song.id || "",
@@ -86,12 +95,9 @@ export default function SharePage() {
           artist: song.artist,
         },
       ]);
-      setTitle("");
-      setArtist("");
     } catch (error) {
-      console.error("Error adding song:", error);
-    } finally {
-      setIsAdding(false);
+      console.error("Error adding YouTube song:", error);
+      throw error; // Re-throw so the loading state can be handled properly
     }
   };
 
@@ -103,21 +109,14 @@ export default function SharePage() {
     <div className="space-y-6 p-4">
       <h2 className="text-2xl font-bold">Add Songs to “{boxName}”</h2>
 
-      <form className="flex space-x-2" onSubmit={handleSubmit}>
-        <Input
-          placeholder="Song Title"
-          value={title}
-          onChange={(e) => setTitle(e.currentTarget.value)}
-        />
-        <Input
-          placeholder="Artist (optional)"
-          value={artist}
-          onChange={(e) => setArtist(e.currentTarget.value)}
-        />
-        <Button type="submit" disabled={isAdding}>
-          {isAdding ? "Adding..." : "Add Song"}
-        </Button>
-      </form>
+      <div className="space-y-4">
+        {/* YouTube Search */}
+        <Card>
+          <CardContent className="pt-6">
+            <SongSearch onSongSelect={handleYouTubeSongSelect} />
+          </CardContent>
+        </Card>
+      </div>
 
       <Table>
         <TableHeader>

@@ -12,12 +12,17 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { getBoxSongs, getSongs } from "@/sdk";
+import YouTubePlayer from "@/components/YouTubePlayer";
 
 interface SongRow {
   id: string;
   position: number;
   title?: string;
   artist?: string | null;
+  youtube_id?: string | null;
+  youtube_url?: string | null;
+  thumbnail_url?: string | null;
+  duration?: number | null;
 }
 
 export default function PlayPage() {
@@ -25,6 +30,7 @@ export default function PlayPage() {
   const [rows, setRows] = useState<SongRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [copyButtonText, setCopyButtonText] = useState("📋 Copy");
+  const [currentSongIndex, setCurrentSongIndex] = useState(0);
 
   const shareUrl = `${window.location.origin}/share/${boxId}`;
 
@@ -59,6 +65,10 @@ export default function PlayPage() {
             position: bs.position ?? 0,
             title: songMap.get(bs.song_id || "")?.title,
             artist: songMap.get(bs.song_id || "")?.artist,
+            youtube_id: songMap.get(bs.song_id || "")?.youtube_id,
+            youtube_url: songMap.get(bs.song_id || "")?.youtube_url,
+            thumbnail_url: songMap.get(bs.song_id || "")?.thumbnail_url,
+            duration: songMap.get(bs.song_id || "")?.duration,
           }))
         );
       } catch (error) {
@@ -76,6 +86,23 @@ export default function PlayPage() {
   return (
     <div className="flex flex-1 items-center justify-center px-5 w-full bg-background/40">
       <div className="mx-auto w-[1300px] max-w-full space-y-6">
+        {/* YouTube Player Card */}
+        {rows.length > 0 && (
+          <YouTubePlayer
+            songs={rows.map(row => ({
+              id: row.id,
+              title: row.title,
+              artist: row.artist || undefined,
+              youtube_id: row.youtube_id || undefined,
+              youtube_url: row.youtube_url || undefined,
+              thumbnail_url: row.thumbnail_url || undefined,
+              duration: row.duration || undefined,
+            }))}
+            currentSongIndex={currentSongIndex}
+            onSongChange={setCurrentSongIndex}
+          />
+        )}
+
         {/* Share Section Card */}
         <Card className="bg-white text-foreground">
           <CardContent>
@@ -118,16 +145,26 @@ export default function PlayPage() {
                     <TableHead>#</TableHead>
                     <TableHead>Title</TableHead>
                     <TableHead>Artist</TableHead>
-                    <TableHead>Position</TableHead>
+                    <TableHead>Duration</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rows.map((row, idx) => (
-                    <TableRow key={row.id}>
+                    <TableRow key={row.id} className={idx === currentSongIndex ? "bg-blue-50" : ""}>
                       <TableCell>{idx + 1}</TableCell>
-                      <TableCell>{row.title}</TableCell>
+                      <TableCell className="font-medium">{row.title}</TableCell>
                       <TableCell>{row.artist}</TableCell>
-                      <TableCell>{row.position}</TableCell>
+                      <TableCell>
+                        {row.duration ? `${Math.floor(row.duration / 60)}:${(row.duration % 60).toString().padStart(2, '0')}` : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {row.youtube_id ? (
+                          <span className="text-green-600 text-sm">🎵 Playable</span>
+                        ) : (
+                          <span className="text-gray-500 text-sm">📝 Manual entry</span>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

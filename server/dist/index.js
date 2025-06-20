@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+require("dotenv/config");
 /**
  * @openapi
  * components:
@@ -22,6 +23,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
  *         title:
  *           type: string
  *         artist:
+ *           type: string
+ *           nullable: true
+ *         youtube_id:
+ *           type: string
+ *           nullable: true
+ *         youtube_url:
+ *           type: string
+ *           nullable: true
+ *         duration:
+ *           type: integer
+ *           nullable: true
+ *         thumbnail_url:
  *           type: string
  *           nullable: true
  *     BoxSong:
@@ -150,7 +163,7 @@ app.get("/api/boxes/:id", async (req, res, _next) => {
             .where("id", "=", req.params.id)
             .executeTakeFirst();
         if (!box) {
-            return res.status(404).json({ error: "Box not found" });
+            return void res.status(404).json({ error: "Box not found" });
         }
         res.json(box);
     }
@@ -238,7 +251,7 @@ app.put("/api/boxes/:id", async (req, res, _next) => {
             .where("id", "=", req.params.id)
             .execute();
         if (!updatedRows.length) {
-            return res.status(404).json({ error: "Box not found" });
+            return void res.status(404).json({ error: "Box not found" });
         }
         const box = await db_1.default
             .selectFrom("boxes")
@@ -277,7 +290,7 @@ app.delete("/api/boxes/:id", async (req, res, _next) => {
             .where("id", "=", req.params.id)
             .execute();
         if (!deletedRows.length) {
-            return res.status(404).json({ error: "Box not found" });
+            return void res.status(404).json({ error: "Box not found" });
         }
         res.status(204).end();
     }
@@ -342,7 +355,7 @@ app.get("/api/songs/:id", async (req, res, _next) => {
             .where("id", "=", req.params.id)
             .executeTakeFirst();
         if (!song) {
-            return res.status(404).json({ error: "Song not found" });
+            return void res.status(404).json({ error: "Song not found" });
         }
         res.json(song);
     }
@@ -368,6 +381,14 @@ app.get("/api/songs/:id", async (req, res, _next) => {
  *                 type: string
  *               artist:
  *                 type: string
+ *               youtube_id:
+ *                 type: string
+ *               youtube_url:
+ *                 type: string
+ *               duration:
+ *                 type: integer
+ *               thumbnail_url:
+ *                 type: string
  *             required:
  *               - title
  *     responses:
@@ -381,9 +402,28 @@ app.get("/api/songs/:id", async (req, res, _next) => {
 app.post("/api/songs", async (req, res, _next) => {
     try {
         const id = (0, crypto_1.randomUUID)();
-        const { title, artist } = req.body;
-        await db_1.default.insertInto("songs").values({ id, title, artist }).execute();
-        res.status(201).json({ id, title, artist });
+        const { title, artist, youtube_id, youtube_url, duration, thumbnail_url } = req.body;
+        await db_1.default
+            .insertInto("songs")
+            .values({
+            id,
+            title,
+            artist,
+            youtube_id,
+            youtube_url,
+            duration,
+            thumbnail_url,
+        })
+            .execute();
+        res.status(201).json({
+            id,
+            title,
+            artist,
+            youtube_id,
+            youtube_url,
+            duration,
+            thumbnail_url,
+        });
     }
     catch (error) {
         res.status(500).json({ error: error.message });
@@ -413,6 +453,14 @@ app.post("/api/songs", async (req, res, _next) => {
  *                 type: string
  *               artist:
  *                 type: string
+ *               youtube_id:
+ *                 type: string
+ *               youtube_url:
+ *                 type: string
+ *               duration:
+ *                 type: integer
+ *               thumbnail_url:
+ *                 type: string
  *             required:
  *               - title
  *     responses:
@@ -427,14 +475,14 @@ app.post("/api/songs", async (req, res, _next) => {
  */
 app.put("/api/songs/:id", async (req, res, _next) => {
     try {
-        const { title, artist } = req.body;
+        const { title, artist, youtube_id, youtube_url, duration, thumbnail_url } = req.body;
         const updatedRows = await db_1.default
             .updateTable("songs")
-            .set({ title, artist })
+            .set({ title, artist, youtube_id, youtube_url, duration, thumbnail_url })
             .where("id", "=", req.params.id)
             .execute();
         if (!updatedRows.length) {
-            return res.status(404).json({ error: "Song not found" });
+            return void res.status(404).json({ error: "Song not found" });
         }
         const song = await db_1.default
             .selectFrom("songs")
@@ -473,7 +521,7 @@ app.delete("/api/songs/:id", async (req, res, _next) => {
             .where("id", "=", req.params.id)
             .execute();
         if (!deletedRows.length) {
-            return res.status(404).json({ error: "Song not found" });
+            return void res.status(404).json({ error: "Song not found" });
         }
         res.status(204).end();
     }
@@ -538,7 +586,7 @@ app.get("/api/box_songs/:id", async (req, res, _next) => {
             .where("id", "=", req.params.id)
             .executeTakeFirst();
         if (!rel) {
-            return res.status(404).json({ error: "Relation not found" });
+            return void res.status(404).json({ error: "Relation not found" });
         }
         res.json(rel);
     }
@@ -644,7 +692,7 @@ app.put("/api/box_songs/:id", async (req, res, _next) => {
             .where("id", "=", req.params.id)
             .execute();
         if (!updatedRows.length) {
-            return res.status(404).json({ error: "Relation not found" });
+            return void res.status(404).json({ error: "Relation not found" });
         }
         const rel = await db_1.default
             .selectFrom("box_songs")
@@ -683,11 +731,118 @@ app.delete("/api/box_songs/:id", async (req, res, _next) => {
             .where("id", "=", req.params.id)
             .execute();
         if (!deletedRows.length) {
-            return res.status(404).json({ error: "Relation not found" });
+            return void res.status(404).json({ error: "Relation not found" });
         }
         res.status(204).end();
     }
     catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+/**
+ * @openapi
+ * /api/youtube/search:
+ *   get:
+ *     tags:
+ *       - YouTube
+ *     summary: Search YouTube for songs
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Search query for YouTube videos
+ *       - in: query
+ *         name: maxResults
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Maximum number of results to return
+ *     responses:
+ *       200:
+ *         description: YouTube search results
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 items:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       title:
+ *                         type: string
+ *                       channelTitle:
+ *                         type: string
+ *                       thumbnail:
+ *                         type: string
+ *                       duration:
+ *                         type: string
+ *                       url:
+ *                         type: string
+ *       400:
+ *         description: Missing search query
+ *       500:
+ *         description: YouTube API error
+ */
+app.get("/api/youtube/search", async (req, res, _next) => {
+    try {
+        const query = req.query.q;
+        const maxResults = parseInt(req.query.maxResults) || 10;
+        if (!query) {
+            return void res.status(400).json({ error: "Search query is required" });
+        }
+        const API_KEY = process.env.YOUTUBE_API_KEY;
+        if (!API_KEY) {
+            return void res
+                .status(500)
+                .json({ error: "YouTube API key not configured" });
+        }
+        // Search for videos
+        const searchUrl = `https://www.googleapis.com/youtube/v3/search?` +
+            `part=snippet&type=video&videoCategoryId=10&` + // Music category
+            `q=${encodeURIComponent(query)}&` +
+            `maxResults=${maxResults}&` +
+            `key=${API_KEY}`;
+        const searchResponse = await fetch(searchUrl);
+        const searchData = await searchResponse.json();
+        if (!searchResponse.ok) {
+            throw new Error(searchData.error?.message || "YouTube API error");
+        }
+        // Get video details for duration
+        const videoIds = searchData.items
+            .map((item) => item.id.videoId)
+            .join(",");
+        const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?` +
+            `part=contentDetails&` +
+            `id=${videoIds}&` +
+            `key=${API_KEY}`;
+        const detailsResponse = await fetch(detailsUrl);
+        const detailsData = await detailsResponse.json();
+        if (!detailsResponse.ok) {
+            throw new Error(detailsData.error?.message || "YouTube API error");
+        }
+        // Combine search results with duration info
+        const results = searchData.items.map((item) => {
+            const details = detailsData.items.find((d) => d.id === item.id.videoId);
+            return {
+                id: item.id.videoId,
+                title: item.snippet.title,
+                channelTitle: item.snippet.channelTitle,
+                thumbnail: item.snippet.thumbnails.medium?.url ||
+                    item.snippet.thumbnails.default?.url,
+                duration: details?.contentDetails?.duration || "PT0S",
+                url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+            };
+        });
+        res.json({ items: results });
+    }
+    catch (error) {
+        console.error("YouTube search error:", error);
         res.status(500).json({ error: error.message });
     }
 });

@@ -28,9 +28,15 @@ describe("Songs API", () => {
   it("should list songs", async () => {
     const res = await request(app).get("/api/songs");
     expect(res.status).to.equal(200);
-    expect(res.body)
-      .to.be.an("array")
-      .that.deep.includes({ id: songId, title: "TestSong", artist: "Artist" });
+    expect(res.body).to.be.an("array").that.deep.includes({
+      id: songId,
+      title: "TestSong",
+      artist: "Artist",
+      youtube_id: null,
+      youtube_url: null,
+      duration: null,
+      thumbnail_url: null,
+    });
   });
 
   it("should get a song by id", async () => {
@@ -40,6 +46,10 @@ describe("Songs API", () => {
       id: songId,
       title: "TestSong",
       artist: "Artist",
+      youtube_id: null,
+      youtube_url: null,
+      duration: null,
+      thumbnail_url: null,
     });
   });
 
