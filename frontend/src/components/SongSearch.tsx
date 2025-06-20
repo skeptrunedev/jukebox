@@ -140,7 +140,7 @@ export default function SongSearch({ onSongSelect }: SongSearchProps) {
       {results.length > 0 && (
         <div className="space-y-2">
           <h3 className="font-semibold text-lg">Search Results</h3>
-          <div className="grid gap-3 max-h-96 overflow-y-auto">
+          <div className="grid gap-3 max-h-96 overflow-y-auto scrollbar">
             {results.map((result) => (
               <Card key={result.id} className="p-0">
                 <CardContent className="p-4">

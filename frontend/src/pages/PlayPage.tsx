@@ -1,16 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from "@/components/ui/table";
+import { SongTable, type Column } from "@/components/SongTable";
 import {
   getBoxSongs,
   getSongs,
@@ -21,18 +14,7 @@ import {
 import YouTubePlayer from "@/components/YouTubePlayer";
 import SongSearch from "@/components/SongSearch";
 import { Copy, Check, X, Play, Clock } from "lucide-react";
-
-interface SongRow {
-  id: string;
-  position: number;
-  title?: string;
-  artist?: string | null;
-  youtube_id?: string | null;
-  youtube_url?: string | null;
-  thumbnail_url?: string | null;
-  duration?: number | null;
-  status?: "queued" | "playing" | "played";
-}
+import { type SongRow, usePlayerSongs } from "@/lib/player";
 
 export default function PlayPage() {
   const { boxId } = useParams<{ boxId: string }>();
@@ -48,19 +30,8 @@ export default function PlayPage() {
 
   const shareUrl = `${window.location.origin}/share/${boxId}`;
 
-  // Memoize the songs array to prevent unnecessary YouTubePlayer re-renders
-  const memoizedSongs = useMemo(() => {
-    return rows.map((row) => ({
-      id: row.id,
-      title: row.title,
-      artist: row.artist || undefined,
-      youtube_id: row.youtube_id || undefined,
-      youtube_url: row.youtube_url || undefined,
-      thumbnail_url: row.thumbnail_url || undefined,
-      duration: row.duration || undefined,
-      status: row.status,
-    }));
-  }, [rows]);
+  // Convert rows into player-ready song objects
+  const memoizedSongs = usePlayerSongs(rows);
 
   const handleCopyUrl = async () => {
     try {
@@ -291,58 +262,46 @@ export default function PlayPage() {
               <p className="text-sm text-muted-foreground">
                 Songs currently in this jukebox playlist
               </p>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>#</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Artist</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((row, idx) => (
-                    <TableRow
-                      key={row.id}
-                      className={idx === currentSongIndex ? "bg-blue-50" : ""}
-                    >
-                      <TableCell>{idx + 1}</TableCell>
-                      <TableCell className="font-medium">{row.title}</TableCell>
-                      <TableCell>{row.artist}</TableCell>
-                      <TableCell>
-                        {row.duration
-                          ? `${Math.floor(row.duration / 60)}:${(
-                              row.duration % 60
-                            )
+              <SongTable
+                rows={rows}
+                columns={
+                  [
+                    { header: "#", cell: (_, i) => i + 1 },
+                    { header: "Title", cell: (r) => r.title },
+                    { header: "Artist", cell: (r) => r.artist },
+                    {
+                      header: "Duration",
+                      cell: (r) =>
+                        r.duration
+                          ? `${Math.floor(r.duration / 60)}:${(r.duration % 60)
                               .toString()
                               .padStart(2, "0")}`
-                          : "-"}
-                      </TableCell>
-                      <TableCell>
-                        {row.status === "playing" && (
+                          : "-",
+                    },
+                    {
+                      header: "Status",
+                      cell: (r) =>
+                        r.status === "playing" ? (
                           <>
-                            <Play className="w-4 h-4 mr-1 inline" />
-                            Playing
+                            <Play className="w-4 h-4 mr-1 inline" /> Playing
                           </>
-                        )}
-                        {row.status === "played" && (
+                        ) : r.status === "played" ? (
                           <>
-                            <Check className="w-4 h-4 mr-1 inline" />
-                            Played
+                            <Check className="w-4 h-4 mr-1 inline" /> Played
                           </>
-                        )}
-                        {row.status === "queued" && (
+                        ) : r.status === "queued" ? (
                           <>
-                            <Clock className="w-4 h-4 mr-1 inline" />
-                            Queued
+                            <Clock className="w-4 h-4 mr-1 inline" /> Queued
                           </>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        ) : null,
+                    },
+                  ] as Column<SongRow>[]
+                }
+                getRowProps={(r, i) => ({
+                  key: r.id,
+                  className: i === currentSongIndex ? "bg-blue-50" : undefined,
+                })}
+              />
             </div>
           </CardContent>
         </Card>

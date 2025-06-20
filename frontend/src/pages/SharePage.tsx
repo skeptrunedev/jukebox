@@ -1,29 +1,11 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from "@/components/ui/table";
 import { getBoxSongs, getSongs, createSong, createBoxSong } from "@/sdk";
 import SongSearch from "@/components/SongSearch";
 import { Check, Clock, Play } from "lucide-react";
-
-interface SongRow {
-  id: string;
-  position: number;
-  title?: string;
-  artist?: string | null;
-  youtube_id?: string | null;
-  youtube_url?: string | null;
-  thumbnail_url?: string | null;
-  duration?: number | null;
-  status?: "queued" | "playing" | "played";
-}
+import { SongTable } from "@/components/SongTable";
+import type { SongRow } from "@/lib/player";
 
 export default function SharePage() {
   const { boxId } = useParams<{ boxId: string }>();
@@ -168,55 +150,41 @@ export default function SharePage() {
               <p className="text-sm text-muted-foreground">
                 Songs currently in this jukebox playlist
               </p>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>#</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Artist</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((row, idx) => (
-                    <TableRow key={row.id}>
-                      <TableCell>{idx + 1}</TableCell>
-                      <TableCell className="font-medium">{row.title}</TableCell>
-                      <TableCell>{row.artist}</TableCell>
-                      <TableCell>
-                        {row.duration
-                          ? `${Math.floor(row.duration / 60)}:${(
-                              row.duration % 60
-                            )
-                              .toString()
-                              .padStart(2, "0")}`
-                          : "-"}
-                      </TableCell>
-                      <TableCell>
-                        {row.status === "playing" && (
-                          <>
-                            <Play className="w-4 h-4 mr-1 inline" />
-                            Playing
-                          </>
-                        )}
-                        {row.status === "played" && (
-                          <>
-                            <Check className="w-4 h-4 mr-1 inline" />
-                            Played
-                          </>
-                        )}
-                        {row.status === "queued" && (
-                          <>
-                            <Clock className="w-4 h-4 mr-1 inline" />
-                            Queued
-                          </>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <SongTable
+                rows={rows}
+                columns={[
+                  { header: "#", cell: (_, i) => i + 1 },
+                  { header: "Title", cell: (r) => r.title },
+                  { header: "Artist", cell: (r) => r.artist },
+                  {
+                    header: "Duration",
+                    cell: (r) =>
+                      r.duration
+                        ? `${Math.floor(r.duration / 60)}:${(r.duration % 60)
+                            .toString()
+                            .padStart(2, "0")}`
+                        : "-",
+                  },
+                  {
+                    header: "Status",
+                    cell: (r) =>
+                      r.status === "playing" ? (
+                        <>
+                          <Play className="w-4 h-4 mr-1 inline" /> Playing
+                        </>
+                      ) : r.status === "played" ? (
+                        <>
+                          <Check className="w-4 h-4 mr-1 inline" /> Played
+                        </>
+                      ) : r.status === "queued" ? (
+                        <>
+                          <Clock className="w-4 h-4 mr-1 inline" /> Queued
+                        </>
+                      ) : null,
+                  },
+                ]}
+                getRowProps={(r) => ({ key: r.id })}
+              />
             </div>
           </CardContent>
         </Card>

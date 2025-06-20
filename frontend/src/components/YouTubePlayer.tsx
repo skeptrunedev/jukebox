@@ -39,19 +39,10 @@ interface YTPlayer {
   destroy: () => void;
 }
 
-interface Song {
-  id: string; // box_song id
-  title?: string;
-  artist?: string;
-  youtube_id?: string;
-  youtube_url?: string;
-  thumbnail_url?: string;
-  duration?: number;
-  status?: "queued" | "playing" | "played";
-}
+import type { PlayerSong } from '@/lib/player'
 
 interface YouTubePlayerProps {
-  songs: Song[];
+  songs: PlayerSong[];
   currentSongIndex: number;
   onSongChange: (index: number) => void;
   onStatusUpdate?: (
