@@ -10,6 +10,7 @@ import {
   TooltipTrigger,
 } from "./tooltip";
 import { siGithub, siX } from "simple-icons";
+import { Edit } from "lucide-react";
 import { useGitHubStars } from "../../hooks/useGitHubStars";
 import { getBox, updateBox, createBox } from "../../sdk";
 import { CreateBoxDialog } from "../CreateBoxDialog";
@@ -128,9 +129,10 @@ export function Layout({ children }: LayoutProps) {
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="text-lg font-semibold text-foreground hover:text-main transition-colors cursor-pointer px-2 py-1 rounded-md hover:bg-secondary-background/50"
+                    className="text-lg font-semibold text-foreground hover:text-main transition-colors cursor-pointer px-2 py-1 rounded-md hover:bg-secondary-background/50 flex items-center gap-2"
                   >
                     {jukeboxName}
+                    <Edit className="h-4 w-4 opacity-60" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -153,7 +155,9 @@ export function Layout({ children }: LayoutProps) {
           <div className="mx-auto flex w-[1300px] text-foreground max-w-full items-center justify-between">
             <div className="flex items-center">
               <a
-                className="size-9 rounded-base flex bg-white text-main-foreground border-2 border-black items-center justify-center font-heading"
+                className={`size-9 rounded-base flex text-main-foreground border-2 border-black items-center justify-center font-heading ${
+                  jukeboxName ? "bg-main" : "bg-white"
+                }`}
                 href="/"
               >
                 <img

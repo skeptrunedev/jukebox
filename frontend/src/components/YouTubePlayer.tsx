@@ -75,20 +75,6 @@ export default function YouTubePlayer({
   // Track the current video ID to avoid unnecessary re-initializations
   const currentVideoIdRef = useRef<string>("");
 
-  const handleNext = useCallback(() => {
-    if (currentSongIndex < songs.length - 1) {
-      const nextIndex = currentSongIndex + 1;
-      onSongChange(nextIndex);
-    }
-  }, [currentSongIndex, songs.length, onSongChange]);
-
-  const handlePrevious = useCallback(() => {
-    if (currentSongIndex > 0) {
-      const prevIndex = currentSongIndex - 1;
-      onSongChange(prevIndex);
-    }
-  }, [currentSongIndex, onSongChange]);
-
   // Memoize handleStatusUpdate to prevent unnecessary re-renders
   const stableStatusUpdate = useCallback(
     (songId: string, status: "queued" | "playing" | "played") => {
@@ -98,6 +84,34 @@ export default function YouTubePlayer({
     },
     [onStatusUpdate]
   );
+
+  const handleNext = useCallback(() => {
+    if (currentSongIndex < songs.length - 1) {
+      // Mark current song as played when skipping forward
+      if (currentSong) {
+        stableStatusUpdate(currentSong.id, "played");
+      }
+      const nextIndex = currentSongIndex + 1;
+      onSongChange(nextIndex);
+    }
+  }, [
+    currentSongIndex,
+    songs.length,
+    onSongChange,
+    currentSong,
+    stableStatusUpdate,
+  ]);
+
+  const handlePrevious = useCallback(() => {
+    if (currentSongIndex > 0) {
+      // Mark current song as played when skipping backward
+      if (currentSong) {
+        stableStatusUpdate(currentSong.id, "played");
+      }
+      const prevIndex = currentSongIndex - 1;
+      onSongChange(prevIndex);
+    }
+  }, [currentSongIndex, onSongChange, currentSong, stableStatusUpdate]);
 
   const initializePlayer = useCallback(() => {
     if (!currentSong?.youtube_id) return;

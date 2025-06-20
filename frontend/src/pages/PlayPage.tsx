@@ -20,6 +20,7 @@ import {
 } from "@/sdk";
 import YouTubePlayer from "@/components/YouTubePlayer";
 import SongSearch from "@/components/SongSearch";
+import { Copy, Check, X, Play, Clock } from "lucide-react";
 
 interface SongRow {
   id: string;
@@ -37,7 +38,12 @@ export default function PlayPage() {
   const { boxId } = useParams<{ boxId: string }>();
   const [rows, setRows] = useState<SongRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [copyButtonText, setCopyButtonText] = useState("📋 Copy");
+  const [copyButtonText, setCopyButtonText] = useState<React.ReactNode>(
+    <>
+      <Copy className="w-4 h-4 mr-1" />
+      Copy
+    </>
+  );
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
 
   const shareUrl = `${window.location.origin}/share/${boxId}`;
@@ -59,12 +65,40 @@ export default function PlayPage() {
   const handleCopyUrl = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
-      setCopyButtonText("✅ Copied");
-      setTimeout(() => setCopyButtonText("📋 Copy"), 2000);
+      setCopyButtonText(
+        <>
+          <Check className="w-4 h-4 mr-1" />
+          Copied
+        </>
+      );
+      setTimeout(
+        () =>
+          setCopyButtonText(
+            <>
+              <Copy className="w-4 h-4 mr-1" />
+              Copy
+            </>
+          ),
+        2000
+      );
     } catch (error) {
       console.error("Failed to copy URL:", error);
-      setCopyButtonText("❌ Failed");
-      setTimeout(() => setCopyButtonText("📋 Copy"), 2000);
+      setCopyButtonText(
+        <>
+          <X className="w-4 h-4 mr-1" />
+          Failed
+        </>
+      );
+      setTimeout(
+        () =>
+          setCopyButtonText(
+            <>
+              <Copy className="w-4 h-4 mr-1" />
+              Copy
+            </>
+          ),
+        2000
+      );
     }
   };
 
@@ -91,6 +125,7 @@ export default function PlayPage() {
         box_id: boxId,
         song_id: song.id || "",
         position: rows.length,
+        status: "queued",
       });
       setRows((prev) => [
         ...prev,
@@ -103,6 +138,7 @@ export default function PlayPage() {
           youtube_url: song.youtube_url,
           thumbnail_url: song.thumbnail_url,
           duration: song.duration,
+          status: relation.status ?? "queued",
         },
       ]);
     } catch (error) {
@@ -284,9 +320,24 @@ export default function PlayPage() {
                           : "-"}
                       </TableCell>
                       <TableCell>
-                        {row.status === "playing" && "▶️ Playing"}
-                        {row.status === "played" && "✅ Played"}
-                        {row.status === "queued" && "⏳ Queued"}
+                        {row.status === "playing" && (
+                          <>
+                            <Play className="w-4 h-4 mr-1 inline" />
+                            Playing
+                          </>
+                        )}
+                        {row.status === "played" && (
+                          <>
+                            <Check className="w-4 h-4 mr-1 inline" />
+                            Played
+                          </>
+                        )}
+                        {row.status === "queued" && (
+                          <>
+                            <Clock className="w-4 h-4 mr-1 inline" />
+                            Queued
+                          </>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
