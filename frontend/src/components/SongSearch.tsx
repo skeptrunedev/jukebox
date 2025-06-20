@@ -2,8 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Search, Plus, Play } from "lucide-react";
-import { parseYouTubeDuration, formatDuration, cleanYouTubeTitle } from "@/lib/youtube";
+import { Loader2, Search, Plus } from "lucide-react";
+import {
+  parseYouTubeDuration,
+  formatDuration,
+  cleanYouTubeTitle,
+} from "@/lib/youtube";
 import { searchYouTube } from "@/sdk";
 
 interface YouTubeSearchResult {
@@ -43,17 +47,24 @@ export default function SongSearch({ onSongSelect }: SongSearchProps) {
 
     setIsSearching(true);
     setError(null);
-    
+
     try {
       const data = await searchYouTube(searchQuery, 10);
       // Map the SDK response to our expected format, filtering out any incomplete results
-      const validResults: YouTubeSearchResult[] = (data.items || [])
-        .filter((item): item is Required<NonNullable<typeof item>> => 
-          !!(item?.id && item?.title && item?.channelTitle && item?.thumbnail && item?.duration && item?.url)
-        );
+      const validResults: YouTubeSearchResult[] = (data.items || []).filter(
+        (item): item is Required<NonNullable<typeof item>> =>
+          !!(
+            item?.id &&
+            item?.title &&
+            item?.channelTitle &&
+            item?.thumbnail &&
+            item?.duration &&
+            item?.url
+          )
+      );
       setResults(validResults);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Search failed');
+      setError(err instanceof Error ? err.message : "Search failed");
       setResults([]);
     } finally {
       setIsSearching(false);
@@ -87,13 +98,15 @@ export default function SongSearch({ onSongSelect }: SongSearchProps) {
 
   const handleSongSelect = async (result: YouTubeSearchResult) => {
     // Set loading state for this specific song
-    setAddingIds(prev => new Set(prev).add(result.id));
-    
+    setAddingIds((prev) => new Set(prev).add(result.id));
+
     try {
       // Clean up the title to extract artist and song name
       const { cleanTitle, possibleArtist } = cleanYouTubeTitle(result.title);
-      const channelTitle = result.channelTitle.replace(/\s*(VEVO|Records|Music|Official)\s*/gi, '').trim();
-      
+      const channelTitle = result.channelTitle
+        .replace(/\s*(VEVO|Records|Music|Official)\s*/gi, "")
+        .trim();
+
       await onSongSelect({
         title: cleanTitle,
         artist: possibleArtist || channelTitle,
@@ -104,7 +117,7 @@ export default function SongSearch({ onSongSelect }: SongSearchProps) {
       });
     } finally {
       // Remove loading state for this song
-      setAddingIds(prev => {
+      setAddingIds((prev) => {
         const newSet = new Set(prev);
         newSet.delete(result.id);
         return newSet;
@@ -144,27 +157,32 @@ export default function SongSearch({ onSongSelect }: SongSearchProps) {
             {results.map((result) => (
               <Card key={result.id} className="p-0">
                 <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
                       <img
                         src={result.thumbnail}
                         alt={result.title}
                         className="w-16 h-12 object-cover rounded"
                       />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded opacity-0 hover:opacity-100 transition-opacity">
-                        <Play className="h-4 w-4 text-white" />
+                      <div className="min-w-0">
+                        <h4
+                          className="font-medium text-sm text-wrap"
+                          title={result.title}
+                          dangerouslySetInnerHTML={{ __html: result.title }}
+                        />
+                        <p
+                          className="text-xs text-gray-600 text-wrap"
+                          title={result.channelTitle}
+                          dangerouslySetInnerHTML={{
+                            __html: result.channelTitle,
+                          }}
+                        />
+                        <p className="text-xs text-gray-500">
+                          {formatDuration(
+                            parseYouTubeDuration(result.duration)
+                          )}
+                        </p>
                       </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-sm truncate" title={result.title}>
-                        {result.title}
-                      </h4>
-                      <p className="text-xs text-gray-600 truncate" title={result.channelTitle}>
-                        {result.channelTitle}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {formatDuration(parseYouTubeDuration(result.duration))}
-                      </p>
                     </div>
                     <Button
                       size="sm"
