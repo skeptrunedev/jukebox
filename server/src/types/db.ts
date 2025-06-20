@@ -17,5 +17,6 @@ export interface Database {
     box_id: string;
     song_id: string;
     position: number;
+    status: 'queued' | 'playing' | 'played';
   };
 }

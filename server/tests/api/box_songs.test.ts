@@ -62,6 +62,14 @@ describe("BoxSongs API", () => {
     expect(res.body.position).to.equal(2);
   });
 
+  it("should update the status of a relation", async () => {
+    const res = await request(app)
+      .put(`/api/box_songs/${relId}`)
+      .send({ status: "playing" });
+    expect(res.status).to.equal(200);
+    expect(res.body.status).to.equal("playing");
+  });
+
   it("should delete a relation", async () => {
     const res = await request(app).delete(`/api/box_songs/${relId}`);
     expect(res.status).to.equal(204);

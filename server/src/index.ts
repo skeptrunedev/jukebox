@@ -44,6 +44,12 @@ import "dotenv/config";
  *           type: string
  *         position:
  *           type: integer
+ *         status:
+ *           type: string
+ *           enum:
+ *             - queued
+ *             - playing
+ *             - played
  */
 import express, { NextFunction } from "express";
 import cors from "cors";
@@ -618,6 +624,12 @@ app.get("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
  *                 type: string
  *               position:
  *                 type: integer
+ *               status:
+ *                 type: string
+ *                 enum:
+ *                   - queued
+ *                   - playing
+ *                   - played
  *             required:
  *               - box_id
  *               - song_id
@@ -633,7 +645,7 @@ app.get("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
 app.post("/api/box_songs", async (req, res, _next: NextFunction) => {
   try {
     const id = randomUUID();
-    const { box_id, song_id, position } = req.body;
+    const { box_id, song_id, position, status } = req.body;
 
     // Validate that the box exists
     const box = await db
@@ -657,9 +669,14 @@ app.post("/api/box_songs", async (req, res, _next: NextFunction) => {
 
     await db
       .insertInto("box_songs")
-      .values({ id, box_id, song_id, position })
+      .values({ id, box_id, song_id, position, status })
       .execute();
-    res.status(201).json({ id, box_id, song_id, position });
+    const rel = await db
+      .selectFrom("box_songs")
+      .selectAll()
+      .where("id", "=", id)
+      .executeTakeFirst();
+    res.status(201).json(rel);
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
@@ -691,6 +708,12 @@ app.post("/api/box_songs", async (req, res, _next: NextFunction) => {
  *                 type: string
  *               position:
  *                 type: integer
+ *               status:
+ *                 type: string
+ *                 enum:
+ *                   - queued
+ *                   - playing
+ *                   - played
  *     responses:
  *       200:
  *         description: Updated box-song relation
@@ -703,7 +726,7 @@ app.post("/api/box_songs", async (req, res, _next: NextFunction) => {
  */
 app.put("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
   try {
-    const { box_id, song_id, position } = req.body;
+    const { box_id, song_id, position, status } = req.body;
     const updates: Record<string, unknown> = {};
 
     // Validate box_id if provided
@@ -733,6 +756,12 @@ app.put("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
     }
 
     if (position !== undefined) updates.position = position;
+    if (status !== undefined) {
+      if (!["queued", "playing", "played"].includes(status as string)) {
+        return void res.status(400).json({ error: "Invalid status" });
+      }
+      updates.status = status;
+    }
 
     const updatedRows = await db
       .updateTable("box_songs")

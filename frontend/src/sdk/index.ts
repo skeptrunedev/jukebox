@@ -120,6 +120,26 @@ export async function createBoxSong(
 }
 
 /**
+ * Update a box-song relationship.
+ */
+export async function updateBoxSong(
+  id: string,
+  body: NonNullable<paths["/api/box_songs/{id}"]["put"]["requestBody"]>["content"]["application/json"]
+): Promise<components["schemas"]["BoxSong"]> {
+  const response = await fetch(`${API_HOST}/api/box_songs/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(
+      `Failed to update box-song: ${response.status} ${response.statusText}`
+    );
+  }
+  return await response.json();
+}
+
+/**
  * Search YouTube for songs.
  */
 export async function searchYouTube(

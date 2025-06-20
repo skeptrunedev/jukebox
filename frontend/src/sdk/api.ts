@@ -406,6 +406,8 @@ export interface paths {
                         box_id: string;
                         song_id: string;
                         position: number;
+                        /** @enum {string} */
+                        status?: "queued" | "playing" | "played";
                     };
                 };
             };
@@ -480,6 +482,8 @@ export interface paths {
                         box_id?: string;
                         song_id?: string;
                         position?: number;
+                        /** @enum {string} */
+                        status?: "queued" | "playing" | "played";
                     };
                 };
             };
@@ -622,6 +626,8 @@ export interface components {
             box_id?: string;
             song_id?: string;
             position?: number;
+            /** @enum {string} */
+            status?: "queued" | "playing" | "played";
         };
     };
     responses: never;

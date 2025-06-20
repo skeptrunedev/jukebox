@@ -48,6 +48,12 @@ require("dotenv/config");
  *           type: string
  *         position:
  *           type: integer
+ *         status:
+ *           type: string
+ *           enum:
+ *             - queued
+ *             - playing
+ *             - played
  */
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
@@ -614,6 +620,12 @@ app.get("/api/box_songs/:id", async (req, res, _next) => {
  *                 type: string
  *               position:
  *                 type: integer
+ *               status:
+ *                 type: string
+ *                 enum:
+ *                   - queued
+ *                   - playing
+ *                   - played
  *             required:
  *               - box_id
  *               - song_id
@@ -629,12 +641,35 @@ app.get("/api/box_songs/:id", async (req, res, _next) => {
 app.post("/api/box_songs", async (req, res, _next) => {
     try {
         const id = (0, crypto_1.randomUUID)();
-        const { box_id, song_id, position } = req.body;
+        const { box_id, song_id, position, status } = req.body;
+        // Validate that the box exists
+        const box = await db_1.default
+            .selectFrom("boxes")
+            .selectAll()
+            .where("id", "=", box_id)
+            .executeTakeFirst();
+        if (!box) {
+            return void res.status(400).json({ error: "Box not found" });
+        }
+        // Validate that the song exists
+        const song = await db_1.default
+            .selectFrom("songs")
+            .selectAll()
+            .where("id", "=", song_id)
+            .executeTakeFirst();
+        if (!song) {
+            return void res.status(400).json({ error: "Song not found" });
+        }
         await db_1.default
             .insertInto("box_songs")
-            .values({ id, box_id, song_id, position })
+            .values({ id, box_id, song_id, position, status })
             .execute();
-        res.status(201).json({ id, box_id, song_id, position });
+        const rel = await db_1.default
+            .selectFrom("box_songs")
+            .selectAll()
+            .where("id", "=", id)
+            .executeTakeFirst();
+        res.status(201).json(rel);
     }
     catch (error) {
         res.status(500).json({ error: error.message });
@@ -666,6 +701,12 @@ app.post("/api/box_songs", async (req, res, _next) => {
  *                 type: string
  *               position:
  *                 type: integer
+ *               status:
+ *                 type: string
+ *                 enum:
+ *                   - queued
+ *                   - playing
+ *                   - played
  *     responses:
  *       200:
  *         description: Updated box-song relation
@@ -678,14 +719,40 @@ app.post("/api/box_songs", async (req, res, _next) => {
  */
 app.put("/api/box_songs/:id", async (req, res, _next) => {
     try {
-        const { box_id, song_id, position } = req.body;
+        const { box_id, song_id, position, status } = req.body;
         const updates = {};
-        if (box_id !== undefined)
+        // Validate box_id if provided
+        if (box_id !== undefined) {
+            const box = await db_1.default
+                .selectFrom("boxes")
+                .selectAll()
+                .where("id", "=", box_id)
+                .executeTakeFirst();
+            if (!box) {
+                return void res.status(400).json({ error: "Box not found" });
+            }
             updates.box_id = box_id;
-        if (song_id !== undefined)
+        }
+        // Validate song_id if provided
+        if (song_id !== undefined) {
+            const song = await db_1.default
+                .selectFrom("songs")
+                .selectAll()
+                .where("id", "=", song_id)
+                .executeTakeFirst();
+            if (!song) {
+                return void res.status(400).json({ error: "Song not found" });
+            }
             updates.song_id = song_id;
+        }
         if (position !== undefined)
             updates.position = position;
+        if (status !== undefined) {
+            if (!["queued", "playing", "played"].includes(status)) {
+                return void res.status(400).json({ error: "Invalid status" });
+            }
+            updates.status = status;
+        }
         const updatedRows = await db_1.default
             .updateTable("box_songs")
             .set(updates)

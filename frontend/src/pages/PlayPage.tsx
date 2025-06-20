@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,13 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
-import { getBoxSongs, getSongs, createSong, createBoxSong } from "@/sdk";
+import {
+  getBoxSongs,
+  getSongs,
+  createSong,
+  createBoxSong,
+  updateBoxSong,
+} from "@/sdk";
 import YouTubePlayer from "@/components/YouTubePlayer";
 import SongSearch from "@/components/SongSearch";
 
@@ -24,6 +30,7 @@ interface SongRow {
   youtube_url?: string | null;
   thumbnail_url?: string | null;
   duration?: number | null;
+  status?: "queued" | "playing" | "played";
 }
 
 export default function PlayPage() {
@@ -34,6 +41,20 @@ export default function PlayPage() {
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
 
   const shareUrl = `${window.location.origin}/share/${boxId}`;
+
+  // Memoize the songs array to prevent unnecessary YouTubePlayer re-renders
+  const memoizedSongs = useMemo(() => {
+    return rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      artist: row.artist || undefined,
+      youtube_id: row.youtube_id || undefined,
+      youtube_url: row.youtube_url || undefined,
+      thumbnail_url: row.thumbnail_url || undefined,
+      duration: row.duration || undefined,
+      status: row.status,
+    }));
+  }, [rows]);
 
   const handleCopyUrl = async () => {
     try {
@@ -46,34 +67,6 @@ export default function PlayPage() {
       setTimeout(() => setCopyButtonText("📋 Copy"), 2000);
     }
   };
-
-  const fetchSongs = useCallback(async () => {
-    if (!boxId) return;
-
-    try {
-      const [boxSongs, songs] = await Promise.all([getBoxSongs(), getSongs()]);
-      const filtered = boxSongs
-        .filter((bs) => bs.box_id === boxId)
-        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-      const songMap = new Map(songs.map((s) => [s.id, s]));
-      setRows(
-        filtered.map((bs) => ({
-          id: bs.id || "",
-          position: bs.position ?? 0,
-          title: songMap.get(bs.song_id || "")?.title,
-          artist: songMap.get(bs.song_id || "")?.artist,
-          youtube_id: songMap.get(bs.song_id || "")?.youtube_id,
-          youtube_url: songMap.get(bs.song_id || "")?.youtube_url,
-          thumbnail_url: songMap.get(bs.song_id || "")?.thumbnail_url,
-          duration: songMap.get(bs.song_id || "")?.duration,
-        }))
-      );
-    } catch (error) {
-      console.error("Error loading box data:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [boxId]);
 
   const handleYouTubeSongSelect = async (songData: {
     title: string;
@@ -118,23 +111,85 @@ export default function PlayPage() {
     }
   };
 
+  const handleStatusUpdate = useCallback(
+    async (songId: string, status: "queued" | "playing" | "played") => {
+      try {
+        await updateBoxSong(songId, { status });
+        // Update local state to reflect the change
+        setRows((prevRows) =>
+          prevRows.map((row) => (row.id === songId ? { ...row, status } : row))
+        );
+      } catch (error) {
+        console.error("Error updating song status:", error);
+      }
+    },
+    []
+  );
+
   // Initial load and polling setup
   useEffect(() => {
     if (!boxId) return;
 
-    setLoading(true);
-    fetchSongs();
+    const fetchSongs = async (isInitialLoad = false) => {
+      try {
+        const [boxSongs, songs] = await Promise.all([
+          getBoxSongs(),
+          getSongs(),
+        ]);
+        const filtered = boxSongs
+          .filter((bs) => bs.box_id === boxId)
+          .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+        const songMap = new Map(songs.map((s) => [s.id, s]));
+        const newRows = filtered.map((bs) => ({
+          id: bs.id || "",
+          position: bs.position ?? 0,
+          title: songMap.get(bs.song_id || "")?.title,
+          artist: songMap.get(bs.song_id || "")?.artist,
+          youtube_id: songMap.get(bs.song_id || "")?.youtube_id,
+          youtube_url: songMap.get(bs.song_id || "")?.youtube_url,
+          thumbnail_url: songMap.get(bs.song_id || "")?.thumbnail_url,
+          duration: songMap.get(bs.song_id || "")?.duration,
+          status: bs.status ?? "queued",
+        }));
 
-    // Set up polling every 100ms
+        setRows((prevRows) => {
+          const existingIds = new Set(prevRows.map((row) => row.id));
+          const newIds = new Set(newRows.map((row) => row.id));
+
+          // Keep existing rows that still exist in new data
+          const keptRows = prevRows.filter((row) => newIds.has(row.id));
+
+          // Add only genuinely new rows
+          const addedRows = newRows.filter((row) => !existingIds.has(row.id));
+
+          return [...keptRows, ...addedRows];
+        });
+
+        // Only update loading state on initial load
+        if (isInitialLoad) {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error loading box data:", error);
+        if (isInitialLoad) {
+          setLoading(false);
+        }
+      }
+    };
+
+    setLoading(true);
+    fetchSongs(true); // Initial load
+
+    // Set up polling every 2 seconds (more reasonable than 100ms)
     const intervalId = setInterval(() => {
-      fetchSongs();
-    }, 100);
+      fetchSongs(false); // Polling updates
+    }, 2000);
 
     // Cleanup interval on unmount or boxId change
     return () => {
       clearInterval(intervalId);
     };
-  }, [boxId, fetchSongs]);
+  }, [boxId]);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -172,21 +227,12 @@ export default function PlayPage() {
         </Card>
 
         {/* YouTube Player Card */}
-        {rows.length > 0 && (
-          <YouTubePlayer
-            songs={rows.map((row) => ({
-              id: row.id,
-              title: row.title,
-              artist: row.artist || undefined,
-              youtube_id: row.youtube_id || undefined,
-              youtube_url: row.youtube_url || undefined,
-              thumbnail_url: row.thumbnail_url || undefined,
-              duration: row.duration || undefined,
-            }))}
-            currentSongIndex={currentSongIndex}
-            onSongChange={setCurrentSongIndex}
-          />
-        )}
+        <YouTubePlayer
+          songs={memoizedSongs}
+          currentSongIndex={currentSongIndex}
+          onSongChange={setCurrentSongIndex}
+          onStatusUpdate={handleStatusUpdate}
+        />
 
         {/* Add Songs Card */}
         <Card className="bg-white text-foreground">
@@ -238,15 +284,9 @@ export default function PlayPage() {
                           : "-"}
                       </TableCell>
                       <TableCell>
-                        {row.youtube_id ? (
-                          <span className="text-green-600 text-sm">
-                            🎵 Playable
-                          </span>
-                        ) : (
-                          <span className="text-gray-500 text-sm">
-                            📝 Manual entry
-                          </span>
-                        )}
+                        {row.status === "playing" && "▶️ Playing"}
+                        {row.status === "played" && "✅ Played"}
+                        {row.status === "queued" && "⏳ Queued"}
                       </TableCell>
                     </TableRow>
                   ))}
