@@ -71,7 +71,7 @@ export default function YouTubePlayer({
   const playerRef = useRef<YTPlayer | null>(null);
   const apiLoadedRef = useRef<boolean>(false);
   const currentSong = songs[currentSongIndex];
-  
+
   // Track the current video ID to avoid unnecessary re-initializations
   const currentVideoIdRef = useRef<string>("");
 
@@ -90,17 +90,23 @@ export default function YouTubePlayer({
   }, [currentSongIndex, onSongChange]);
 
   // Memoize handleStatusUpdate to prevent unnecessary re-renders
-  const stableStatusUpdate = useCallback((songId: string, status: "queued" | "playing" | "played") => {
-    if (onStatusUpdate) {
-      onStatusUpdate(songId, status);
-    }
-  }, [onStatusUpdate]);
+  const stableStatusUpdate = useCallback(
+    (songId: string, status: "queued" | "playing" | "played") => {
+      if (onStatusUpdate) {
+        onStatusUpdate(songId, status);
+      }
+    },
+    [onStatusUpdate]
+  );
 
   const initializePlayer = useCallback(() => {
     if (!currentSong?.youtube_id) return;
-    
+
     // Don't reinitialize if we're already playing the same video
-    if (currentVideoIdRef.current === currentSong.youtube_id && playerRef.current) {
+    if (
+      currentVideoIdRef.current === currentSong.youtube_id &&
+      playerRef.current
+    ) {
       return;
     }
 
@@ -116,14 +122,16 @@ export default function YouTubePlayer({
       videoId: currentSong.youtube_id,
       playerVars: {
         enablejsapi: 1,
-        autoplay: 0,
+        autoplay: 1,
         controls: 1,
         modestbranding: 1,
         rel: 0,
       },
       events: {
-        onReady: () => {
+        onReady: (event) => {
           setPlayerReady(true);
+          // Auto-start playback when player is ready
+          event.target.playVideo();
           // Set current song as playing when player is ready
           if (currentSong) {
             stableStatusUpdate(currentSong.id, "playing");
@@ -160,7 +168,9 @@ export default function YouTubePlayer({
     }
 
     // Check if script is already being loaded
-    if (document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+    if (
+      document.querySelector('script[src="https://www.youtube.com/iframe_api"]')
+    ) {
       return;
     }
 
