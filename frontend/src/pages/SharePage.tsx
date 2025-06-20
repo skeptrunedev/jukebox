@@ -41,8 +41,17 @@ export default function SharePage() {
           const existingIds = new Set(prevRows.map((row) => row.id));
           const newIds = new Set(newRows.map((row) => row.id));
 
-          // Keep existing rows that still exist in new data
-          const keptRows = prevRows.filter((row) => newIds.has(row.id));
+          // Keep existing rows that still exist in new data, but update their status
+          const keptRows = prevRows
+            .filter((row) => newIds.has(row.id))
+            .map((existingRow) => {
+              const updatedRow = newRows.find(
+                (newRow) => newRow.id === existingRow.id
+              );
+              return updatedRow
+                ? { ...existingRow, status: updatedRow.status }
+                : existingRow;
+            });
 
           // Add only genuinely new rows
           const addedRows = newRows.filter((row) => !existingIds.has(row.id));
@@ -108,6 +117,10 @@ export default function SharePage() {
           position: relation.position ?? 0,
           title: song.title,
           artist: song.artist,
+          youtube_id: song.youtube_id,
+          youtube_url: song.youtube_url,
+          thumbnail_url: song.thumbnail_url,
+          duration: song.duration,
           status: relation.status ?? "queued",
         },
       ]);
