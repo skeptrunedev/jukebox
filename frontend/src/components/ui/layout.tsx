@@ -153,15 +153,21 @@ export function Layout({ children }: LayoutProps) {
           <div className="mx-auto flex w-[1300px] text-foreground max-w-full items-center justify-between">
             <div className="flex items-center">
               <a
-                className="text-[22px] size-9 rounded-base flex bg-white text-main-foreground border-2 border-black items-center justify-center font-heading"
+                className="size-9 rounded-base flex bg-white text-main-foreground border-2 border-black items-center justify-center font-heading"
                 href="/"
               >
-                J
+                <img
+                  src="/favicon-32x32.png"
+                  alt="Jukebox Logo"
+                  className="w-6 h-6"
+                />
               </a>
             </div>
 
             {/* Center content */}
-            <div className="flex items-center sm:ml-20">{renderNavbarCenter()}</div>
+            <div className="flex items-center sm:ml-20">
+              {renderNavbarCenter()}
+            </div>
 
             <div className="flex items-center gap-4">
               <Button asChild className="bg-white">

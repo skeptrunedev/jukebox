@@ -106,36 +106,56 @@ export default function SharePage() {
   }
 
   return (
-    <div className="space-y-6 p-4">
-      <h2 className="text-2xl font-bold">Add Songs to “{boxName}”</h2>
+    <div className="flex flex-1 items-center justify-center p-5 w-full bg-background/40">
+      <div className="mx-auto w-[1300px] max-w-full space-y-6">
+        {/* Header */}
+        <div className="text-center">
+          <h2 className="text-2xl font-bold">Add Songs to "{boxName}"</h2>
+        </div>
 
-      <div className="space-y-4">
-        {/* YouTube Search */}
-        <Card>
-          <CardContent className="pt-6">
-            <SongSearch onSongSelect={handleYouTubeSongSelect} />
+        {/* Add Songs Card */}
+        <Card className="bg-white text-foreground">
+          <CardContent>
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold">Add Songs</h3>
+              <p className="text-sm text-muted-foreground">
+                Search for songs on YouTube to add to this jukebox
+              </p>
+              <SongSearch onSongSelect={handleYouTubeSongSelect} />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Songs Table Card */}
+        <Card className="bg-white text-foreground">
+          <CardContent>
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold">Current Playlist</h3>
+              <p className="text-sm text-muted-foreground">
+                Songs currently in this jukebox playlist
+              </p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>#</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Artist</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((row, idx) => (
+                    <TableRow key={row.id}>
+                      <TableCell>{idx + 1}</TableCell>
+                      <TableCell className="font-medium">{row.title}</TableCell>
+                      <TableCell>{row.artist}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </div>
-
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>#</TableHead>
-            <TableHead>Title</TableHead>
-            <TableHead>Artist</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row, idx) => (
-            <TableRow key={row.id}>
-              <TableCell>{idx + 1}</TableCell>
-              <TableCell>{row.title}</TableCell>
-              <TableCell>{row.artist}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
     </div>
   );
 }
