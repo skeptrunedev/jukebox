@@ -1,0 +1,29 @@
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "${SERVER_PORT}:${SERVER_INTERNAL_PORT}"
+    env_file:
+      - server/.env
+    environment:
+      DB_FILE: ${DB_FILE}
+    volumes:
+      - sqlite_data:/data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "${FRONTEND_PORT}:${FRONTEND_INTERNAL_PORT}"
+    environment:
+      VITE_API_HOST: ${VITE_API_HOST}
+    depends_on:
+      - server
+    restart: unless-stopped
+
+volumes:
+  sqlite_data:

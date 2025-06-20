@@ -4,9 +4,8 @@ import BetterSqlite3 from 'better-sqlite3';
 import { Kysely, SqliteDialect } from 'kysely';
 import { Database } from './types/db';
 
-const sqlite = new BetterSqlite3(
-  path.resolve(__dirname, '../dev.sqlite3')
-);
+const dbFile = process.env.DB_FILE || '../dev.sqlite3';
+const sqlite = new BetterSqlite3(path.resolve(__dirname, dbFile));
 
 const db = new Kysely<Database>({
   dialect: new SqliteDialect({ database: sqlite })
