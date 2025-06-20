@@ -634,6 +634,27 @@ app.post("/api/box_songs", async (req, res, _next: NextFunction) => {
   try {
     const id = randomUUID();
     const { box_id, song_id, position } = req.body;
+
+    // Validate that the box exists
+    const box = await db
+      .selectFrom("boxes")
+      .selectAll()
+      .where("id", "=", box_id)
+      .executeTakeFirst();
+    if (!box) {
+      return void res.status(400).json({ error: "Box not found" });
+    }
+
+    // Validate that the song exists
+    const song = await db
+      .selectFrom("songs")
+      .selectAll()
+      .where("id", "=", song_id)
+      .executeTakeFirst();
+    if (!song) {
+      return void res.status(400).json({ error: "Song not found" });
+    }
+
     await db
       .insertInto("box_songs")
       .values({ id, box_id, song_id, position })
@@ -684,9 +705,35 @@ app.put("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
   try {
     const { box_id, song_id, position } = req.body;
     const updates: Record<string, unknown> = {};
-    if (box_id !== undefined) updates.box_id = box_id;
-    if (song_id !== undefined) updates.song_id = song_id;
+
+    // Validate box_id if provided
+    if (box_id !== undefined) {
+      const box = await db
+        .selectFrom("boxes")
+        .selectAll()
+        .where("id", "=", box_id)
+        .executeTakeFirst();
+      if (!box) {
+        return void res.status(400).json({ error: "Box not found" });
+      }
+      updates.box_id = box_id;
+    }
+
+    // Validate song_id if provided
+    if (song_id !== undefined) {
+      const song = await db
+        .selectFrom("songs")
+        .selectAll()
+        .where("id", "=", song_id)
+        .executeTakeFirst();
+      if (!song) {
+        return void res.status(400).json({ error: "Song not found" });
+      }
+      updates.song_id = song_id;
+    }
+
     if (position !== undefined) updates.position = position;
+
     const updatedRows = await db
       .updateTable("box_songs")
       .set(updates)
