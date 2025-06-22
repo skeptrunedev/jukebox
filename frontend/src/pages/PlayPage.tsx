@@ -3,7 +3,8 @@ import type { ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SongTable, type Column } from "@/components/SongTable";
+import { InteractiveSongTable } from "@/components/InteractiveSongTable";
+import type { Column } from "@/components/SongTable";
 import YouTubePlayer from "@/components/YouTubePlayer";
 import SongSearch from "@/components/SongSearch";
 import { Copy, Check, X, Play, Clock } from "lucide-react";
@@ -11,7 +12,7 @@ import type { SongRow } from "@/lib/player";
 import { useJukebox } from "@/hooks/useJukeboxContext";
 
 export default function PlayPage() {
-  const { rows, shareUrl, addSong, currentSongIndex } = useJukebox();
+  const { rows, setRows, shareUrl, addSong, currentSongIndex } = useJukebox();
   const [copyButtonText, setCopyButtonText] = useState<ReactNode>(
     <>
       <Copy className="w-4 h-4 mr-1" />
@@ -107,66 +108,14 @@ export default function PlayPage() {
         <Card className="bg-white text-foreground">
           <CardContent>
             <div className="space-y-3">
-              <h3 className="text-lg font-semibold">Current Playlist</h3>
-              <p className="text-sm text-muted-foreground">
-                Songs currently in this jukebox playlist
-              </p>
-              <SongTable
+              <h3 className="text-lg font-semibold">Playlist</h3>
+              <InteractiveSongTable
                 rows={rows}
-                columns={
-                  [
-                    { header: "#", cell: (_, i) => i + 1 },
-                    {
-                      header: "Title",
-                      cell: (r) => (
-                        <span
-                          dangerouslySetInnerHTML={{
-                            __html: r.title ?? "Unknown Title",
-                          }}
-                        />
-                      ),
-                    },
-                    {
-                      header: "Artist",
-                      cell: (r) => (
-                        <span
-                          dangerouslySetInnerHTML={{
-                            __html: r.artist ?? "Unknown Artist",
-                          }}
-                        />
-                      ),
-                    },
-                    {
-                      header: "Duration",
-                      cell: (r) =>
-                        r.duration
-                          ? `${Math.floor(r.duration / 60)}:${(r.duration % 60)
-                              .toString()
-                              .padStart(2, "0")}`
-                          : "-",
-                    },
-                    {
-                      header: "Status",
-                      cell: (r) =>
-                        r.status === "playing" ? (
-                          <>
-                            <Play className="w-4 h-4 mr-1 inline" /> Playing
-                          </>
-                        ) : r.status === "played" ? (
-                          <>
-                            <Check className="w-4 h-4 mr-1 inline" /> Played
-                          </>
-                        ) : r.status === "queued" ? (
-                          <>
-                            <Clock className="w-4 h-4 mr-1 inline" /> Queued
-                          </>
-                        ) : null,
-                    },
-                  ] as Column<SongRow>[]
-                }
-                getRowProps={(r, i) => ({
-                  key: r.id,
-                  className: i === currentSongIndex ? "bg-blue-50" : undefined,
+                columns={columns}
+                onOrderChange={setRows}
+                getRowProps={(row, index) => ({
+                  key: row.id,
+                  className: currentSongIndex === index ? "bg-neutral-100" : "",
                 })}
               />
             </div>
@@ -176,3 +125,45 @@ export default function PlayPage() {
     </div>
   );
 }
+
+const columns: Column<SongRow>[] = [
+  { header: "#", cell: (r) => r.position },
+  {
+    header: "Title",
+    cell: (r: SongRow) => (
+      <div className="flex items-center gap-2">
+        <span
+          className="font-medium"
+          dangerouslySetInnerHTML={{ __html: r.title ?? "Unknown Title" }}
+        ></span>
+      </div>
+    ),
+  },
+  {
+    header: "Artist",
+    cell: (r: SongRow) => (
+      <div className="flex items-center gap-2">
+        <span
+          className="text-sm text-muted-foreground"
+          dangerouslySetInnerHTML={{ __html: r.artist ?? "Unknown Artist" }}
+        ></span>
+      </div>
+    ),
+  },
+  {
+    header: "Duration",
+    cell: (r: SongRow) =>
+      new Date((r.duration ?? 0) * 1000).toISOString().slice(14, 19),
+  },
+  {
+    header: "Status",
+    cell: (r: SongRow) => (
+      <div className="flex items-center gap-2">
+        {r.status === "playing" && <Play className="w-4 h-4 text-green-500" />}
+        {r.status === "queued" && <Clock className="w-4 h-4" />}
+        {r.status === "played" && <Check className="w-4 h-4" />}
+        <span className="capitalize">{r.status}</span>
+      </div>
+    ),
+  },
+];

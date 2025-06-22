@@ -22,10 +22,12 @@ export function SongTable<Row>({
   rows,
   columns,
   getRowProps,
+  renderRow,
 }: {
   rows: Row[];
   columns: Column<Row>[];
   getRowProps?: (row: Row, index: number) => { key: Key; className?: string };
+  renderRow?: (row: Row, columns: Column<Row>[], getRowProps?: (row: Row, index: number) => { key: Key; className?: string }) => ReactNode;
 }) {
   return (
     <Table>
@@ -38,6 +40,9 @@ export function SongTable<Row>({
       </TableHeader>
       <TableBody>
         {rows.map((row, rowIndex) => {
+          if (renderRow) {
+            return renderRow(row, columns, getRowProps);
+          }
           const props = getRowProps?.(row, rowIndex) ?? { key: rowIndex };
           return (
             <TableRow key={props.key} className={props.className}>

@@ -25,6 +25,7 @@ type Box = components["schemas"]["Box"];
 export interface JukeboxContextValue {
   box?: Box;
   rows: SongRow[];
+  setRows: Dispatch<SetStateAction<SongRow[]>>;
   songs: PlayerSong[];
   loading: boolean;
   slug?: string;
@@ -198,6 +199,12 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchBoxSongs();
+
+    const refetchInterval = setInterval(() => {
+      fetchBoxSongs();
+    }, 500);
+
+    return () => clearInterval(refetchInterval);
   }, [fetchBoxSongs]);
 
   // Prefetch media whenever the songs list changes
@@ -291,11 +298,13 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
   const hasPrevious = currentSongIndex > 0;
   const hasNext = currentSongIndex < songs.length - 1;
 
+  // Expose context value
   return (
     <JukeboxContext.Provider
       value={{
         box,
         rows,
+        setRows,
         songs,
         loading,
         slug: boxSlug,
