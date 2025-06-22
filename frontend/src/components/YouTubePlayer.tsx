@@ -305,7 +305,7 @@ export const YouTubePlayer = () => {
           </div>
 
           {/* User interaction message */}
-          {!hasInteracted && !isPlaying && (
+          {!hasInteracted && !isPlaying && !isLoading && (
             <div className="text-center text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
               <p className="font-medium">Ready to play!</p>
               <p>
