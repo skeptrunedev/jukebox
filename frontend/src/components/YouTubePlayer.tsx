@@ -14,6 +14,7 @@ export const YouTubePlayer = () => {
   const [hasInteracted, setHasInteracted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const seekTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const autoplayAttemptedRef = useRef(false);
 
   const currentSong = useMemo(() => {
     return songs[currentSongIndex];
@@ -29,6 +30,7 @@ export const YouTubePlayer = () => {
     if (!audio) {
       const newAudio = new Audio();
       newAudio.crossOrigin = "anonymous";
+      newAudio.preload = "auto";
       audioRef.current = newAudio;
     }
 
@@ -36,6 +38,7 @@ export const YouTubePlayer = () => {
     if (mediaUrl && audioRef.current) {
       // Only update the src if it's different from the current src
       if (audioRef.current.src !== mediaUrl) {
+        autoplayAttemptedRef.current = false;
         audioRef.current.src = mediaUrl;
         setDuration(currentSong.duration ?? 0);
         setCurrentTime(0);
@@ -88,6 +91,12 @@ export const YouTubePlayer = () => {
 
     const handleCanPlay = () => {
       setIsLoading(false);
+      if (hasInteracted && !autoplayAttemptedRef.current) {
+        autoplayAttemptedRef.current = true;
+        audio.play().catch((e) => {
+          console.error("Autoplay was prevented.", e);
+        });
+      }
     };
 
     const handleError = () => {
@@ -117,7 +126,7 @@ export const YouTubePlayer = () => {
       audio.removeEventListener("canplay", handleCanPlay);
       audio.removeEventListener("error", handleError);
     };
-  }, [currentSongIndex, songs.length, goToNext]);
+  }, [currentSongIndex, songs.length, goToNext, hasInteracted]);
 
   const handlePlayPause = async () => {
     const audio = audioRef.current;
