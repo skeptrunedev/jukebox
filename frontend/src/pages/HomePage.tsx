@@ -20,9 +20,9 @@ export default function HomePage() {
 
   const handleCreateJukebox = async (name: string) => {
     try {
-      const box = await createBox({ name });
-      if (box.id) {
-        navigate(`/play/${box.id}`);
+      const box = await createBox({ name, slug: name });
+      if (box.slug) {
+        navigate(`/play/${box.slug}`);
       }
     } catch (error) {
       console.error("Failed to create box:", error);

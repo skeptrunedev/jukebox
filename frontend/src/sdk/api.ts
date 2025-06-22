@@ -56,6 +56,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         name: string;
+                        slug: string;
                     };
                 };
             };
@@ -68,6 +69,13 @@ export interface paths {
                     content: {
                         "application/json": components["schemas"]["Box"];
                     };
+                };
+                /** @description Slug already exists */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };
@@ -84,7 +92,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a single box by ID */
+        /** Get a single box by ID or slug */
         get: {
             parameters: {
                 query?: never;
@@ -151,7 +159,7 @@ export interface paths {
             };
         };
         post?: never;
-        /** Delete a box by ID */
+        /** Delete a box by ID or slug */
         delete: {
             parameters: {
                 query?: never;
@@ -611,6 +619,7 @@ export interface components {
         Box: {
             id?: string;
             name?: string;
+            slug?: string;
         };
         Song: {
             id?: string;

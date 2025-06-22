@@ -59,6 +59,7 @@ import db from "./db";
 import { randomUUID } from "crypto";
 import { sql } from "kysely";
 import { setupSwagger } from "./swagger";
+import http from "http";
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -171,9 +172,7 @@ app.get("/api/boxes/:id", async (req, res, _next: NextFunction) => {
     const box = await db
       .selectFrom("boxes")
       .selectAll()
-      .where((eb) =>
-        eb.or([eb("id", "=", identifier), eb("slug", "=", identifier)])
-      )
+      .where(sql<boolean>`id = ${identifier} OR slug = ${identifier}`)
       .executeTakeFirst();
     if (!box) {
       return void res.status(404).json({ error: "Box not found" });
@@ -212,18 +211,36 @@ app.get("/api/boxes/:id", async (req, res, _next: NextFunction) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Box'
+ *       409:
+ *         description: Slug already exists
  */
 app.post("/api/boxes", async (req, res, _next: NextFunction) => {
   try {
     const id = randomUUID();
     const { name, slug: providedSlug } = req.body;
     // Generate slug from name if not provided
-    const slug =
+    let slug =
       providedSlug ||
       name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "");
+
+    // Check for slug conflict and make unique if needed
+    let uniqueSlug = slug;
+    while (
+      await db
+        .selectFrom("boxes")
+        .select("id")
+        .where("slug", "=", uniqueSlug)
+        .executeTakeFirst()
+    ) {
+      // Append random 4-digit number
+      const rand = Math.floor(1000 + Math.random() * 9000);
+      uniqueSlug = `${slug}-${rand}`;
+    }
+    slug = uniqueSlug;
+
     await db.insertInto("boxes").values({ id, name, slug }).execute();
     res.status(201).json({ id, name, slug });
   } catch (error) {
@@ -311,9 +328,7 @@ app.delete("/api/boxes/:id", async (req, res, _next: NextFunction) => {
     const identifier = req.params.id;
     const deletedRows = await db
       .deleteFrom("boxes")
-      .where((eb) =>
-        eb.or([eb("id", "=", identifier), eb("slug", "=", identifier)])
-      )
+      .where(sql<boolean>`id = ${identifier} OR slug = ${identifier}`)
       .execute();
     if (!deletedRows.length) {
       return void res.status(404).json({ error: "Box not found" });
@@ -638,6 +653,7 @@ app.get("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
  *             properties:
  *               box_id:
  *                 type: string
+ *                 description: Box ID or slug
  *               song_id:
  *                 type: string
  *               position:
@@ -663,17 +679,19 @@ app.get("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
 app.post("/api/box_songs", async (req, res, _next: NextFunction) => {
   try {
     const id = randomUUID();
-    const { box_id, song_id, position, status } = req.body;
+    let { box_id, song_id, position, status } = req.body;
 
-    // Validate that the box exists
+    // Validate that the box exists (accepting either box ID or slug)
     const box = await db
       .selectFrom("boxes")
       .selectAll()
-      .where("id", "=", box_id)
+      .where(sql<boolean>`id = ${box_id} OR slug = ${box_id}`)
       .executeTakeFirst();
     if (!box) {
       return void res.status(400).json({ error: "Box not found" });
     }
+    // Use the resolved box ID for the relation
+    box_id = box.id;
 
     // Validate that the song exists
     const song = await db
@@ -956,10 +974,14 @@ app.get("/api/youtube/search", async (req, res, _next: NextFunction) => {
   }
 });
 
+const server = http.createServer(app);
 if (require.main === module) {
-  app.listen(port, () => {
+  server.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
   });
+} else {
+  // For testing, listen on ephemeral port bound to localhost
+  server.listen(0, '127.0.0.1');
 }
 
-export default app;
+export default server;

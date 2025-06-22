@@ -17,7 +17,7 @@ import { Copy, Check, X, Play, Clock } from "lucide-react";
 import { type SongRow, usePlayerSongs } from "@/lib/player";
 
 export default function PlayPage() {
-  const { boxId } = useParams<{ boxId: string }>();
+  const { boxSlug } = useParams<{ boxSlug: string }>();
   const [rows, setRows] = useState<SongRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [copyButtonText, setCopyButtonText] = useState<React.ReactNode>(
@@ -28,7 +28,7 @@ export default function PlayPage() {
   );
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
 
-  const shareUrl = `${window.location.origin}/share/${boxId}`;
+  const shareUrl = `${window.location.origin}/share/${boxSlug}`;
 
   // Convert rows into player-ready song objects
   const memoizedSongs = usePlayerSongs(rows);
@@ -81,7 +81,7 @@ export default function PlayPage() {
     thumbnail_url: string;
     duration: number;
   }) => {
-    if (!boxId) return;
+    if (!boxSlug) return;
 
     try {
       const song = await createSong({
@@ -93,7 +93,7 @@ export default function PlayPage() {
         duration: songData.duration,
       });
       const relation = await createBoxSong({
-        box_id: boxId,
+        box_id: boxSlug,
         song_id: song.id || "",
         position: rows.length,
         status: "queued",
@@ -135,7 +135,7 @@ export default function PlayPage() {
 
   // Initial load and polling setup
   useEffect(() => {
-    if (!boxId) return;
+    if (!boxSlug) return;
 
     const fetchSongs = async (isInitialLoad = false) => {
       try {
@@ -144,7 +144,7 @@ export default function PlayPage() {
           getSongs(),
         ]);
         const filtered = boxSongs
-          .filter((bs) => bs.box_id === boxId)
+          .filter((bs) => bs.box_id === boxSlug)
           .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
         const songMap = new Map(songs.map((s) => [s.id, s]));
         const newRows = filtered.map((bs) => ({
@@ -192,11 +192,11 @@ export default function PlayPage() {
       fetchSongs(false); // Polling updates
     }, 2000);
 
-    // Cleanup interval on unmount or boxId change
+    // Cleanup interval on unmount or boxSlug change
     return () => {
       clearInterval(intervalId);
     };
-  }, [boxId]);
+  }, [boxSlug]);
 
   if (loading) {
     return <div>Loading...</div>;

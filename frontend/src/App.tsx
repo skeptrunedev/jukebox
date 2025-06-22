@@ -17,7 +17,7 @@ function App() {
           }
         />
         <Route
-          path="/play/:boxId"
+          path="/play/:boxSlug"
           element={
             <Layout>
               <PlayPage />
@@ -25,7 +25,7 @@ function App() {
           }
         />
         <Route
-          path="/share/:boxId"
+          path="/share/:boxSlug"
           element={
             <Layout>
               <SharePage />

@@ -31,9 +31,9 @@ export function Layout({ children }: LayoutProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const boxId = params.boxId;
+  const boxSlug = params.boxSlug;
   const isHomePage = location.pathname === "/";
-  const hasBoxId = !!boxId;
+  const hasBoxSlug = !!boxSlug;
 
   // Function to get a random cool name
   const getRandomCoolName = () => {
@@ -42,27 +42,27 @@ export function Layout({ children }: LayoutProps) {
 
   // Load jukebox name when on a box page
   useEffect(() => {
-    if (!boxId) {
+    if (!boxSlug) {
       setJukeboxName("");
       return;
     }
 
     (async () => {
       try {
-        const box = await getBox(boxId);
+        const box = await getBox(boxSlug);
         setJukeboxName(box.name || "");
       } catch (error) {
         console.error("Error loading box:", error);
         setJukeboxName("");
       }
     })();
-  }, [boxId]);
+  }, [boxSlug]);
 
   const handleCreateJukebox = async (name: string) => {
     try {
-      const box = await createBox({ name });
-      if (box.id) {
-        navigate(`/play/${box.id}`);
+      const box = await createBox({ name, slug: name });
+      if (box.slug) {
+        navigate(`/play/${box.slug}`);
       }
     } catch (error) {
       console.error("Failed to create box:", error);
@@ -71,11 +71,11 @@ export function Layout({ children }: LayoutProps) {
   };
 
   const handleSaveName = async () => {
-    if (!boxId || !jukeboxName.trim()) return;
+    if (!boxSlug || !jukeboxName.trim()) return;
 
     setIsUpdating(true);
     try {
-      await updateBox(boxId, { name: jukeboxName.trim() });
+      await updateBox(boxSlug, { name: jukeboxName.trim() });
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating box name:", error);
@@ -102,7 +102,7 @@ export function Layout({ children }: LayoutProps) {
       );
     }
 
-    if (hasBoxId && jukeboxName) {
+    if (hasBoxSlug && jukeboxName) {
       return (
         <TooltipProvider>
           <div className="flex items-center gap-2">

@@ -8,12 +8,12 @@ import { SongTable } from "@/components/SongTable";
 import type { SongRow } from "@/lib/player";
 
 export default function SharePage() {
-  const { boxId } = useParams<{ boxId: string }>();
+  const { boxSlug } = useParams<{ boxSlug: string }>();
   const [rows, setRows] = useState<SongRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!boxId) return;
+    if (!boxSlug) return;
 
     const fetchSongs = async (isInitialLoad = false) => {
       try {
@@ -22,7 +22,7 @@ export default function SharePage() {
           getSongs(),
         ]);
         const filtered = boxSongs
-          .filter((bs) => bs.box_id === boxId)
+          .filter((bs) => bs.box_id === boxSlug)
           .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
         const songMap = new Map(songs.map((s) => [s.id, s]));
         const newRows = filtered.map((bs) => ({
@@ -79,11 +79,11 @@ export default function SharePage() {
       fetchSongs(false); // Polling updates
     }, 2000);
 
-    // Cleanup interval on unmount or boxId change
+    // Cleanup interval on unmount or boxSlug change
     return () => {
       clearInterval(intervalId);
     };
-  }, [boxId]);
+  }, [boxSlug]);
 
   const handleYouTubeSongSelect = async (songData: {
     title: string;
@@ -93,7 +93,7 @@ export default function SharePage() {
     thumbnail_url: string;
     duration: number;
   }) => {
-    if (!boxId) return;
+    if (!boxSlug) return;
 
     try {
       const song = await createSong({
@@ -105,7 +105,7 @@ export default function SharePage() {
         duration: songData.duration,
       });
       const relation = await createBoxSong({
-        box_id: boxId,
+        box_id: boxSlug,
         song_id: song.id || "",
         position: rows.length,
         status: "queued",

@@ -15,14 +15,17 @@ after(async () => {
 
 describe("BoxSongs API", () => {
   let boxId: string;
+  let boxSlug: string;
   let songId: string;
   let relId: string;
+  let slugRelId: string;
 
   before(async () => {
     const boxRes = await request(app)
       .post("/api/boxes")
       .send({ name: "BoxForRel" });
     boxId = boxRes.body.id;
+    boxSlug = boxRes.body.slug;
     const songRes = await request(app)
       .post("/api/songs")
       .send({ title: "SongForRel", artist: "Artist" });
@@ -30,11 +33,27 @@ describe("BoxSongs API", () => {
   });
 
   it("should create a box-song relation", async () => {
+    await request(app).delete(`/api/box_songs/${relId}`);
     const res = await request(app)
       .post("/api/box_songs")
       .send({ box_id: boxId, song_id: songId, position: 1 });
     expect(res.status).to.equal(201);
     expect(res.body).to.have.property("id");
+    relId = res.body.id;
+  });
+
+  it("should create a box-song relation using box slug", async () => {
+    await request(app).delete(`/api/box_songs/${relId}`);
+    const res = await request(app)
+      .post("/api/box_songs")
+      .send({ box_id: boxSlug, song_id: songId, position: 1 });
+    if (res.status !== 201) {
+      console.error("Error response:", res.body);
+    }
+    expect(res.status).to.equal(201);
+    expect(res.body).to.have.property("id");
+    slugRelId = res.body.id;
+    expect(res.body.box_id).to.equal(boxId);
     relId = res.body.id;
   });
 
