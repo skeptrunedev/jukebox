@@ -4,6 +4,68 @@
  */
 
 export interface paths {
+    "/api/youtube/audio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stream audio-only content for a YouTube video */
+        get: {
+            parameters: {
+                query: {
+                    /** @description The YouTube video ID to stream audio from */
+                    videoId: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Audio stream of the requested YouTube video */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "audio/mpeg": string;
+                        "audio/webm": string;
+                    };
+                };
+                /** @description Missing or invalid videoId parameter */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error?: string;
+                        };
+                    };
+                };
+                /** @description Failed to stream audio or server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error?: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/boxes": {
         parameters: {
             query?: never;
@@ -411,6 +473,7 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
+                        /** @description Box ID or slug */
                         box_id: string;
                         song_id: string;
                         position: number;

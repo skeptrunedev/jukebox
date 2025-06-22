@@ -10,6 +10,7 @@ import {
   createSong,
   createBoxSong,
   updateBoxSong,
+  getBox,
 } from "@/sdk";
 import YouTubePlayer from "@/components/YouTubePlayer";
 import SongSearch from "@/components/SongSearch";
@@ -27,6 +28,9 @@ export default function PlayPage() {
     </>
   );
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
+  const [box, setBox] = useState<
+    { id?: string; name?: string; slug?: string } | undefined
+  >(undefined);
 
   const shareUrl = `${window.location.origin}/share/${boxSlug}`;
 
@@ -133,9 +137,26 @@ export default function PlayPage() {
     []
   );
 
+  useEffect(() => {
+    if (!boxSlug) return;
+
+    const fetchBox = async () => {
+      try {
+        const box = await getBox(boxSlug);
+        setBox(box);
+      } catch (error) {
+        console.error("Error loading box data:", error);
+        setBox(undefined);
+      }
+    };
+
+    fetchBox();
+  }, [boxSlug]);
+
   // Initial load and polling setup
   useEffect(() => {
     if (!boxSlug) return;
+    if (!box?.id) return;
 
     const fetchSongs = async (isInitialLoad = false) => {
       try {
@@ -144,7 +165,7 @@ export default function PlayPage() {
           getSongs(),
         ]);
         const filtered = boxSongs
-          .filter((bs) => bs.box_id === boxSlug)
+          .filter((bs) => bs.box_id === box.id)
           .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
         const songMap = new Map(songs.map((s) => [s.id, s]));
         const newRows = filtered.map((bs) => ({
@@ -196,7 +217,7 @@ export default function PlayPage() {
     return () => {
       clearInterval(intervalId);
     };
-  }, [boxSlug]);
+  }, [box?.id, boxSlug]);
 
   if (loading) {
     return <div>Loading...</div>;

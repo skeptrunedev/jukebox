@@ -1,7 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { getBoxSongs, getSongs, createSong, createBoxSong } from "@/sdk";
+import {
+  getBoxSongs,
+  getSongs,
+  createSong,
+  createBoxSong,
+  getBox,
+} from "@/sdk";
 import SongSearch from "@/components/SongSearch";
 import { Check, Clock, Play } from "lucide-react";
 import { SongTable } from "@/components/SongTable";
@@ -9,11 +15,31 @@ import type { SongRow } from "@/lib/player";
 
 export default function SharePage() {
   const { boxSlug } = useParams<{ boxSlug: string }>();
+  const [box, setBox] = useState<
+    { id?: string; name?: string; slug?: string } | undefined
+  >(undefined);
   const [rows, setRows] = useState<SongRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!boxSlug) return;
+
+    const fetchBox = async () => {
+      try {
+        const box = await getBox(boxSlug);
+        setBox(box);
+      } catch (error) {
+        console.error("Error loading box data:", error);
+        setBox(undefined);
+      }
+    };
+
+    fetchBox();
+  }, [boxSlug]);
+
+  useEffect(() => {
+    if (!boxSlug) return;
+    if (!box) return;
 
     const fetchSongs = async (isInitialLoad = false) => {
       try {
@@ -22,7 +48,7 @@ export default function SharePage() {
           getSongs(),
         ]);
         const filtered = boxSongs
-          .filter((bs) => bs.box_id === boxSlug)
+          .filter((bs) => bs.box_id === box.id)
           .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
         const songMap = new Map(songs.map((s) => [s.id, s]));
         const newRows = filtered.map((bs) => ({
@@ -36,6 +62,8 @@ export default function SharePage() {
           duration: songMap.get(bs.song_id || "")?.duration,
           status: bs.status ?? "queued",
         }));
+
+        // add a log of the songs
 
         setRows((prevRows) => {
           const existingIds = new Set(prevRows.map((row) => row.id));
@@ -83,7 +111,7 @@ export default function SharePage() {
     return () => {
       clearInterval(intervalId);
     };
-  }, [boxSlug]);
+  }, [boxSlug, box]);
 
   const handleYouTubeSongSelect = async (songData: {
     title: string;

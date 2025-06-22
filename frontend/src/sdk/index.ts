@@ -124,7 +124,9 @@ export async function createBoxSong(
  */
 export async function updateBoxSong(
   id: string,
-  body: NonNullable<paths["/api/box_songs/{id}"]["put"]["requestBody"]>["content"]["application/json"]
+  body: NonNullable<
+    paths["/api/box_songs/{id}"]["put"]["requestBody"]
+  >["content"]["application/json"]
 ): Promise<components["schemas"]["BoxSong"]> {
   const response = await fetch(`${API_HOST}/api/box_songs/${id}`, {
     method: "PUT",
@@ -160,4 +162,30 @@ export async function searchYouTube(
     );
   }
   return await response.json();
+}
+
+/**
+ * Get YouTube audio stream URL for a video.
+ * Returns the URL that can be used as a source for audio playback.
+ */
+export function getYouTubeAudioUrl(videoId: string): string {
+  const params = new URLSearchParams({ videoId });
+  return `${API_HOST}/api/youtube/audio?${params}`;
+}
+
+/**
+ * Stream audio-only content for a YouTube video.
+ * Returns a Response object that can be used to stream the audio.
+ */
+export async function streamYouTubeAudio(videoId: string): Promise<Response> {
+  const params = new URLSearchParams({ videoId });
+  const response = await fetch(`${API_HOST}/api/youtube/audio?${params}`);
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to stream YouTube audio: ${response.status} ${response.statusText}`
+    );
+  }
+
+  return response;
 }

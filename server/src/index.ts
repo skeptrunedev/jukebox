@@ -74,11 +74,18 @@ import { randomUUID } from "crypto";
 import { sql } from "kysely";
 import { setupSwagger } from "./swagger";
 import http from "http";
+import ytdl from "ytdl-core";
 
 const app = express();
 const port = process.env.PORT || 3001;
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "*",
+    methods: "*",
+    allowedHeaders: "*",
+  })
+);
 app.use(express.json());
 0; // Log every incoming request and its outcome
 app.use((req, res, next) => {
@@ -90,6 +97,75 @@ app.use((req, res, next) => {
   next();
 });
 setupSwagger(app);
+
+/**
+ * @openapi
+ * /api/youtube/audio:
+ *   get:
+ *     tags:
+ *       - YouTube
+ *     summary: Stream audio-only content for a YouTube video
+ *     parameters:
+ *       - in: query
+ *         name: videoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The YouTube video ID to stream audio from
+ *     responses:
+ *       200:
+ *         description: Audio stream of the requested YouTube video
+ *         content:
+ *           audio/mpeg:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *           audio/webm:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: Missing or invalid videoId parameter
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       500:
+ *         description: Failed to stream audio or server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+app.get("/api/youtube/audio", async (req, res) => {
+  const videoId = req.query.videoId;
+  if (!videoId || typeof videoId !== "string") {
+    return void res
+      .status(400)
+      .json({ error: "videoId query parameter is required" });
+  }
+  try {
+    const info = await ytdl.getInfo(videoId);
+    const format = ytdl.chooseFormat(info.formats, { quality: "highestaudio" });
+    if (!format || !format.mimeType) {
+      return void res
+        .status(500)
+        .json({ error: "No suitable audio format found" });
+    }
+    const mimeType = format.mimeType.split(";")[0];
+    res.setHeader("Content-Type", mimeType);
+    ytdl(videoId, { filter: "audioonly", quality: "highestaudio" }).pipe(res);
+  } catch (error) {
+    console.error("Error streaming YouTube audio:", error);
+    res.status(500).json({ error: "Failed to stream audio" });
+  }
+});
 
 /**
  * @openapi

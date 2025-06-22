@@ -1,45 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Play, Pause, SkipForward, SkipBack, Lightbulb } from "lucide-react";
-
-// YouTube API types
-declare global {
-  interface Window {
-    YT: {
-      Player: new (
-        elementId: string,
-        config: {
-          height: string;
-          width: string;
-          videoId: string;
-          playerVars: Record<string, number>;
-          events: {
-            onReady: (event: { target: YTPlayer }) => void;
-            onStateChange: (event: { data: number; target: YTPlayer }) => void;
-          };
-        }
-      ) => YTPlayer;
-      PlayerState: {
-        UNSTARTED: number;
-        ENDED: number;
-        PLAYING: number;
-        PAUSED: number;
-        BUFFERING: number;
-        CUED: number;
-      };
-    };
-    onYouTubeIframeAPIReady: () => void;
-  }
-}
-
-interface YTPlayer {
-  playVideo: () => void;
-  pauseVideo: () => void;
-  destroy: () => void;
-}
-
-import type { PlayerSong } from '@/lib/player'
+import { Play, Pause, SkipForward, SkipBack } from "lucide-react";
+import { getYouTubeAudioUrl } from "@/sdk";
+import type { PlayerSong } from "@/lib/player";
 
 interface YouTubePlayerProps {
   songs: PlayerSong[];
@@ -58,13 +22,11 @@ export default function YouTubePlayer({
   onStatusUpdate,
 }: YouTubePlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playerReady, setPlayerReady] = useState(false);
-  const playerRef = useRef<YTPlayer | null>(null);
-  const apiLoadedRef = useRef<boolean>(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const currentSong = songs[currentSongIndex];
-
-  // Track the current video ID to avoid unnecessary re-initializations
-  const currentVideoIdRef = useRef<string>("");
 
   // Memoize handleStatusUpdate to prevent unnecessary re-renders
   const stableStatusUpdate = useCallback(
@@ -104,114 +66,107 @@ export default function YouTubePlayer({
     }
   }, [currentSongIndex, onSongChange, currentSong, stableStatusUpdate]);
 
-  const initializePlayer = useCallback(() => {
+  // Initialize audio element when song changes
+  useEffect(() => {
     if (!currentSong?.youtube_id) return;
 
-    // Don't reinitialize if we're already playing the same video
-    if (
-      currentVideoIdRef.current === currentSong.youtube_id &&
-      playerRef.current
-    ) {
-      return;
-    }
+    const audio = audioRef.current;
+    if (!audio) return;
 
-    if (playerRef.current) {
-      playerRef.current.destroy();
-    }
+    setIsLoading(true);
 
-    currentVideoIdRef.current = currentSong.youtube_id;
+    // Set the audio source to the YouTube audio stream
+    const audioUrl = getYouTubeAudioUrl(currentSong.youtube_id);
+    audio.src = audioUrl;
 
-    playerRef.current = new window.YT.Player("youtube-player", {
-      height: "100%",
-      width: "100%",
-      videoId: currentSong.youtube_id,
-      playerVars: {
-        enablejsapi: 1,
-        autoplay: 1,
-        controls: 1,
-        modestbranding: 1,
-        rel: 0,
-      },
-      events: {
-        onReady: (event) => {
-          setPlayerReady(true);
-          // Auto-start playback when player is ready
-          event.target.playVideo();
-          // Set current song as playing when player is ready
-          if (currentSong) {
-            stableStatusUpdate(currentSong.id, "playing");
-          }
-        },
-        onStateChange: (event) => {
-          const state = event.data;
-          if (state === window.YT.PlayerState.PLAYING) {
-            setIsPlaying(true);
-            if (currentSong) {
-              stableStatusUpdate(currentSong.id, "playing");
-            }
-          } else if (state === window.YT.PlayerState.PAUSED) {
-            setIsPlaying(false);
-          } else if (state === window.YT.PlayerState.ENDED) {
-            setIsPlaying(false);
-            if (currentSong) {
-              stableStatusUpdate(currentSong.id, "played");
-            }
-            // Auto-advance to next song
-            handleNext();
-          }
-        },
-      },
-    });
-  }, [currentSong, stableStatusUpdate, handleNext]);
-
-  // Load YouTube IFrame API (only once)
-  useEffect(() => {
-    // Check if YouTube API is already loaded
-    if (window.YT) {
-      apiLoadedRef.current = true;
-      return;
-    }
-
-    // Check if script is already being loaded
-    if (
-      document.querySelector('script[src="https://www.youtube.com/iframe_api"]')
-    ) {
-      return;
-    }
-
-    const tag = document.createElement("script");
-    tag.src = "https://www.youtube.com/iframe_api";
-    const firstScriptTag = document.getElementsByTagName("script")[0];
-    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-
-    // Global callback for when API is ready
-    window.onYouTubeIframeAPIReady = () => {
-      apiLoadedRef.current = true;
+    // Set up event listeners
+    const handleLoadStart = () => setIsLoading(true);
+    const handleCanPlay = () => {
+      setIsLoading(false);
+      setDuration(audio.duration || 0);
     };
-
-    return () => {
-      // Cleanup
-      if (playerRef.current) {
-        playerRef.current.destroy();
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handlePlay = () => {
+      setIsPlaying(true);
+      if (currentSong) {
+        stableStatusUpdate(currentSong.id, "playing");
       }
     };
-  }, []); // Empty dependency array - this should only run once
+    const handlePause = () => setIsPlaying(false);
+    const handleEnded = () => {
+      setIsPlaying(false);
+      if (currentSong) {
+        stableStatusUpdate(currentSong.id, "played");
+      }
+      // Move to next song when current song ends
+      if (currentSongIndex < songs.length - 1) {
+        const nextIndex = currentSongIndex + 1;
+        onSongChange(nextIndex);
+      }
+    };
+    const handleError = (e: Event) => {
+      console.error("Audio playback error:", e);
+      setIsLoading(false);
+      setIsPlaying(false);
+    };
 
-  // Initialize player when song changes or YouTube API becomes available
-  useEffect(() => {
-    if ((window.YT || apiLoadedRef.current) && currentSong?.youtube_id) {
-      initializePlayer();
-    }
-  }, [currentSong?.youtube_id, initializePlayer]);
+    audio.addEventListener("loadstart", handleLoadStart);
+    audio.addEventListener("canplay", handleCanPlay);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("error", handleError);
+
+    // Auto-play when ready
+    audio.load();
+    audio.play().catch(console.error);
+
+    return () => {
+      audio.removeEventListener("loadstart", handleLoadStart);
+      audio.removeEventListener("canplay", handleCanPlay);
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleError);
+    };
+  }, [
+    currentSong,
+    stableStatusUpdate,
+    currentSongIndex,
+    songs.length,
+    onSongChange,
+  ]);
 
   const handlePlayPause = () => {
-    if (!playerRef.current || !playerReady) return;
+    const audio = audioRef.current;
+    if (!audio) return;
 
     if (isPlaying) {
-      playerRef.current.pauseVideo();
+      audio.pause();
     } else {
-      playerRef.current.playVideo();
+      audio.play().catch(console.error);
     }
+  };
+
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const audio = audioRef.current;
+    if (!audio || duration === 0) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percentage = clickX / rect.width;
+    const newTime = percentage * duration;
+
+    audio.currentTime = newTime;
+    setCurrentTime(newTime);
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   if (!currentSong || !currentSong.youtube_id) {
@@ -233,14 +188,8 @@ export default function YouTubePlayer({
     <Card className="bg-white text-foreground">
       <CardContent className="p-6">
         <div className="space-y-4">
-          {/* Ad Block Notice */}
-          <div className="bg-blue-50 border border-blue-200 rounded-base p-3">
-            <p className="text-sm text-blue-800 flex items-center gap-2">
-              <Lightbulb className="h-4 w-4" />
-              <strong>Tip:</strong> Use a browser like Brave or install an
-              adblocker to avoid YouTube ads during playback.
-            </p>
-          </div>
+          {/* Hidden audio element */}
+          <audio ref={audioRef} preload="auto" crossOrigin="anonymous" />
 
           {/* Song Info */}
           <div className="flex items-center gap-4">
@@ -257,9 +206,24 @@ export default function YouTubePlayer({
             </div>
           </div>
 
-          {/* YouTube Embed */}
-          <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-            <div id="youtube-player" className="w-full h-full"></div>
+          {/* Progress Bar */}
+          <div className="space-y-2">
+            <div
+              className="w-full bg-gray-200 rounded-full h-2 cursor-pointer"
+              onClick={handleSeek}
+            >
+              <div
+                className="bg-blue-600 h-2 rounded-full transition-all duration-100"
+                style={{
+                  width:
+                    duration > 0 ? `${(currentTime / duration) * 100}%` : "0%",
+                }}
+              />
+            </div>
+            <div className="flex justify-between text-xs text-gray-500">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
+            </div>
           </div>
 
           {/* Player Controls */}
@@ -268,7 +232,7 @@ export default function YouTubePlayer({
               variant="neutral"
               size="sm"
               onClick={handlePrevious}
-              disabled={songs.length <= 1}
+              disabled={currentSongIndex === 0}
             >
               <SkipBack className="h-4 w-4" />
             </Button>
@@ -276,8 +240,11 @@ export default function YouTubePlayer({
             <Button
               onClick={handlePlayPause}
               className="w-12 h-12 rounded-full"
+              disabled={isLoading}
             >
-              {isPlaying ? (
+              {isLoading ? (
+                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : isPlaying ? (
                 <Pause className="h-6 w-6" />
               ) : (
                 <Play className="h-6 w-6" />
@@ -288,7 +255,7 @@ export default function YouTubePlayer({
               variant="neutral"
               size="sm"
               onClick={handleNext}
-              disabled={songs.length <= 1}
+              disabled={currentSongIndex === songs.length - 1}
             >
               <SkipForward className="h-4 w-4" />
             </Button>
