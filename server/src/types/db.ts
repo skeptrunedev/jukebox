@@ -2,6 +2,7 @@ export interface Database {
   boxes: {
     id: string;
     name: string;
+    slug: string;
   };
   songs: {
     id: string;

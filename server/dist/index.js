@@ -15,6 +15,8 @@ require("dotenv/config");
  *           type: string
  *         name:
  *           type: string
+ *         slug:
+ *           type: string
  *     Song:
  *       type: object
  *       properties:
@@ -144,7 +146,7 @@ app.get("/api/boxes", async (req, res, _next) => {
  *   get:
  *     tags:
  *       - Boxes
- *     summary: Get a single box by ID
+ *     summary: Get a single box by ID or slug
  *     parameters:
  *       - in: path
  *         name: id
@@ -163,10 +165,11 @@ app.get("/api/boxes", async (req, res, _next) => {
  */
 app.get("/api/boxes/:id", async (req, res, _next) => {
     try {
+        const identifier = req.params.id;
         const box = await db_1.default
             .selectFrom("boxes")
             .selectAll()
-            .where("id", "=", req.params.id)
+            .where((eb) => eb.where("id", "=", identifier).orWhere("slug", "=", identifier))
             .executeTakeFirst();
         if (!box) {
             return void res.status(404).json({ error: "Box not found" });
@@ -193,8 +196,11 @@ app.get("/api/boxes/:id", async (req, res, _next) => {
  *             properties:
  *               name:
  *                 type: string
+ *               slug:
+ *                 type: string
  *             required:
  *               - name
+ *               - slug
  *     responses:
  *       201:
  *         description: Created box
@@ -206,9 +212,9 @@ app.get("/api/boxes/:id", async (req, res, _next) => {
 app.post("/api/boxes", async (req, res, _next) => {
     try {
         const id = (0, crypto_1.randomUUID)();
-        const { name } = req.body;
-        await db_1.default.insertInto("boxes").values({ id, name }).execute();
-        res.status(201).json({ id, name });
+        const { name, slug } = req.body;
+        await db_1.default.insertInto("boxes").values({ id, name, slug }).execute();
+        res.status(201).json({ id, name, slug });
     }
     catch (error) {
         res.status(500).json({ error: error.message });

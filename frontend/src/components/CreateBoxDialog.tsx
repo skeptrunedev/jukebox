@@ -51,7 +51,9 @@ export function CreateBoxDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button size="lg" className="text-xl hover:cursor-pointer">Create Jukebox</Button>
+        <Button size="lg" className="text-xl hover:cursor-pointer">
+          Create Jukebox
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -63,6 +65,12 @@ export function CreateBoxDialog({
             placeholder="Jukebox name"
             value={name}
             onChange={(e) => setName(e.currentTarget.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && name && !isCreating) {
+                handleSubmit();
+              }
+            }}
+            autoFocus
           />
         </div>
         <DialogFooter>

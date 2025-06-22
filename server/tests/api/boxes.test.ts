@@ -14,13 +14,16 @@ after(async () => {
 
 describe("Boxes API", () => {
   let boxId: string;
+  let boxSlug: string;
 
   it("should create a box", async () => {
-    const res = await request(app).post("/api/boxes").send({ name: "TestBox" });
+    const res = await request(app).post("/api/boxes").send({ name: "TestBox", slug: "test-box" });
     expect(res.status).to.equal(201);
     expect(res.body).to.have.property("id");
     expect(res.body.name).to.equal("TestBox");
+    expect(res.body.slug).to.equal("test-box");
     boxId = res.body.id;
+    boxSlug = res.body.slug;
   });
 
   it("should list boxes", async () => {
@@ -28,13 +31,19 @@ describe("Boxes API", () => {
     expect(res.status).to.equal(200);
     expect(res.body.data)
       .to.be.an("array")
-      .that.deep.includes({ id: boxId, name: "TestBox" });
+      .that.deep.includes({ id: boxId, name: "TestBox", slug: boxSlug });
   });
 
   it("should get a box by id", async () => {
     const res = await request(app).get(`/api/boxes/${boxId}`);
     expect(res.status).to.equal(200);
-    expect(res.body).to.deep.equal({ id: boxId, name: "TestBox" });
+    expect(res.body).to.deep.equal({ id: boxId, name: "TestBox", slug: boxSlug });
+  });
+
+  it("should get a box by slug", async () => {
+    const res = await request(app).get(`/api/boxes/${boxSlug}`);
+    expect(res.status).to.equal(200);
+    expect(res.body).to.deep.equal({ id: boxId, name: "TestBox", slug: boxSlug });
   });
 
   it("should update a box", async () => {
@@ -43,6 +52,7 @@ describe("Boxes API", () => {
       .send({ name: "RenamedBox" });
     expect(res.status).to.equal(200);
     expect(res.body.name).to.equal("RenamedBox");
+    expect(res.body.slug).to.equal(boxSlug);
   });
 
   it("should delete a box", async () => {

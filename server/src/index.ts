@@ -11,6 +11,8 @@ import "dotenv/config";
  *           type: string
  *         name:
  *           type: string
+ *         slug:
+ *           type: string
  *     Song:
  *       type: object
  *       properties:
@@ -146,7 +148,7 @@ app.get("/api/boxes", async (req, res, _next: NextFunction) => {
  *   get:
  *     tags:
  *       - Boxes
- *     summary: Get a single box by ID
+ *     summary: Get a single box by ID or slug
  *     parameters:
  *       - in: path
  *         name: id
@@ -165,10 +167,13 @@ app.get("/api/boxes", async (req, res, _next: NextFunction) => {
  */
 app.get("/api/boxes/:id", async (req, res, _next: NextFunction) => {
   try {
+    const identifier = req.params.id;
     const box = await db
       .selectFrom("boxes")
       .selectAll()
-      .where("id", "=", req.params.id)
+      .where((eb) =>
+        eb.or([eb("id", "=", identifier), eb("slug", "=", identifier)])
+      )
       .executeTakeFirst();
     if (!box) {
       return void res.status(404).json({ error: "Box not found" });
@@ -195,8 +200,11 @@ app.get("/api/boxes/:id", async (req, res, _next: NextFunction) => {
  *             properties:
  *               name:
  *                 type: string
+ *               slug:
+ *                 type: string
  *             required:
  *               - name
+ *               - slug
  *     responses:
  *       201:
  *         description: Created box
@@ -208,9 +216,16 @@ app.get("/api/boxes/:id", async (req, res, _next: NextFunction) => {
 app.post("/api/boxes", async (req, res, _next: NextFunction) => {
   try {
     const id = randomUUID();
-    const { name } = req.body;
-    await db.insertInto("boxes").values({ id, name }).execute();
-    res.status(201).json({ id, name });
+    const { name, slug: providedSlug } = req.body;
+    // Generate slug from name if not provided
+    const slug =
+      providedSlug ||
+      name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+    await db.insertInto("boxes").values({ id, name, slug }).execute();
+    res.status(201).json({ id, name, slug });
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
@@ -278,7 +293,7 @@ app.put("/api/boxes/:id", async (req, res, _next: NextFunction) => {
  *   delete:
  *     tags:
  *       - Boxes
- *     summary: Delete a box by ID
+ *     summary: Delete a box by ID or slug
  *     parameters:
  *       - in: path
  *         name: id
@@ -293,9 +308,12 @@ app.put("/api/boxes/:id", async (req, res, _next: NextFunction) => {
  */
 app.delete("/api/boxes/:id", async (req, res, _next: NextFunction) => {
   try {
+    const identifier = req.params.id;
     const deletedRows = await db
       .deleteFrom("boxes")
-      .where("id", "=", req.params.id)
+      .where((eb) =>
+        eb.or([eb("id", "=", identifier), eb("slug", "=", identifier)])
+      )
       .execute();
     if (!deletedRows.length) {
       return void res.status(404).json({ error: "Box not found" });
