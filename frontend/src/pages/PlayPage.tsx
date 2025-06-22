@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,13 +12,18 @@ import type { SongRow } from "@/lib/player";
 import { useJukebox } from "@/hooks/useJukeboxContext";
 
 export default function PlayPage() {
-  const { rows, setRows, shareUrl, addSong, currentSongIndex } = useJukebox();
+  const { box, rows, setRows, addSong, currentSongIndex } = useJukebox();
   const [copyButtonText, setCopyButtonText] = useState<ReactNode>(
     <>
       <Copy className="w-4 h-4 mr-1" />
       Copy
     </>
   );
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    setShareUrl(`${window.location.origin}/share/${box?.slug || ""}`);
+  }, [box]);
 
   const handleCopyUrl = async () => {
     if (!shareUrl) return;

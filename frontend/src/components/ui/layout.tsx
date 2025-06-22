@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useState, useEffect } from "react";
-import { useLocation, useParams, useNavigate } from "react-router-dom";
+import { useLocation, useParams, useNavigate, Link } from "react-router-dom";
 import { Button } from "./button";
 import { Input } from "./input";
 import {
@@ -10,11 +10,12 @@ import {
   TooltipTrigger,
 } from "./tooltip";
 import { siGithub, siX } from "simple-icons";
-import { Edit } from "lucide-react";
+import { Edit, User as UserIcon } from "lucide-react";
 import { useGitHubStars } from "../../hooks/useGitHubStars";
 import { getBox, updateBox, createBox } from "../../sdk";
 import { CreateBoxDialog } from "../CreateBoxDialog";
 import { names } from "../../assets/cool-names";
+import { useJukebox } from "@/hooks/useJukeboxContext";
 
 interface LayoutProps {
   children: ReactNode;
@@ -22,6 +23,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
+  const { user } = useJukebox();
   const { formattedStars, loading } = useGitHubStars("skeptrunedev/jukebox");
   const location = useLocation();
   const params = useParams();
@@ -33,6 +35,7 @@ export function Layout({ children }: LayoutProps) {
 
   const boxSlug = params.boxSlug;
   const isHomePage = location.pathname === "/";
+  const isProfilePage = location.pathname === "/profile";
   const hasBoxSlug = !!boxSlug;
 
   // Function to get a random cool name
@@ -59,8 +62,10 @@ export function Layout({ children }: LayoutProps) {
   }, [boxSlug]);
 
   const handleCreateJukebox = async (name: string) => {
+    if (!user?.id) return;
+
     try {
-      const box = await createBox({ name, slug: name });
+      const box = await createBox({ name, slug: name, user_id: user.id });
       if (box.slug) {
         navigate(`/play/${box.slug}`);
       }
@@ -93,7 +98,7 @@ export function Layout({ children }: LayoutProps) {
   };
 
   const renderNavbarCenter = () => {
-    if (isHomePage) {
+    if (isHomePage || isProfilePage) {
       return (
         <CreateBoxDialog
           onCreate={handleCreateJukebox}
@@ -209,6 +214,13 @@ export function Layout({ children }: LayoutProps) {
                   </svg>
                 </a>
               </Button>
+              {user && (
+                <Button asChild size="icon" className="bg-white">
+                  <Link to="/profile">
+                    <UserIcon className="size-5" />
+                  </Link>
+                </Button>
+              )}
             </div>
           </div>
         </nav>

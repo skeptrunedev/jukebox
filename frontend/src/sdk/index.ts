@@ -97,6 +97,62 @@ export async function getSongs(): Promise<components["schemas"]["Song"][]> {
 }
 
 /**
+ * Create a new user.
+ */
+export async function createUser(
+  body: paths["/api/users"]["post"]["requestBody"]["content"]["application/json"]
+): Promise<components["schemas"]["User"]> {
+  const response = await fetch(`${API_HOST}/api/users`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error("Failed to create user:", errorBody);
+    throw new Error(
+      `Failed to create user: ${response.status} ${response.statusText}`
+    );
+  }
+  return await response.json();
+}
+
+/**
+ * Fetch a single user by ID.
+ */
+export async function getUser(
+  id: string
+): Promise<components["schemas"]["User"]> {
+  const response = await fetch(`${API_HOST}/api/users/${id}`);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch user: ${response.status} ${response.statusText}`
+    );
+  }
+  return await response.json();
+}
+
+/**
+ * Update a user by ID.
+ */
+export async function updateUser(
+  id: string,
+  body: paths["/api/users/{id}"]["put"]["requestBody"]["content"]["application/json"]
+): Promise<components["schemas"]["User"]> {
+  const response = await fetch(`${API_HOST}/api/users/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(
+      `Failed to update user: ${response.status} ${response.statusText}`
+    );
+  }
+  return await response.json();
+}
+
+/**
  * Fetch songs by multiple IDs.
  */
 export async function getSongsByIds(

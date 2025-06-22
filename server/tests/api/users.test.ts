@@ -52,14 +52,38 @@ describe("Users API", () => {
     expect(res.status).to.equal(200);
     expect(res.body)
       .to.be.an("array")
-      .that.deep.includes({ id: userAId, fingerprint: fingerprintA, username: usernameA })
-      .and.deep.includes({ id: userBId, fingerprint: fingerprintB, username: usernameB });
+      .that.deep.includes({
+        id: userAId,
+        fingerprint: fingerprintA,
+        username: usernameA,
+      })
+      .and.deep.includes({
+        id: userBId,
+        fingerprint: fingerprintB,
+        username: usernameB,
+      });
   });
 
   it("should get a user by id", async () => {
     const res = await request(app).get(`/api/users/${userAId}`);
     expect(res.status).to.equal(200);
-    expect(res.body).to.deep.equal({ id: userAId, fingerprint: fingerprintA, username: usernameA });
+    expect(res.body).to.deep.equal({
+      id: userAId,
+      fingerprint: fingerprintA,
+      username: usernameA,
+    });
+  });
+
+  it("should get a user by fingerprint", async () => {
+    const res = await request(app).get(
+      `/api/users/${fingerprintA}`
+    );
+    expect(res.status).to.equal(200);
+    expect(res.body).to.deep.equal({
+      id: userAId,
+      fingerprint: fingerprintA,
+      username: usernameA,
+    });
   });
 
   it("should update a user's username", async () => {

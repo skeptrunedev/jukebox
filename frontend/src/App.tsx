@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import HomePage from "@/pages/HomePage";
 import PlayPage from "@/pages/PlayPage";
 import SharePage from "@/pages/SharePage";
+import { ProfilePage } from "@/pages/ProfilePage";
 import { Layout } from "@/components/ui/layout";
 import { JukeboxProvider } from "@/contexts/JukeboxContext";
 
@@ -12,29 +13,41 @@ function App() {
         <Route
           path="/"
           element={
-            <Layout>
-              <HomePage />
-            </Layout>
+            <JukeboxProvider>
+              <Layout>
+                <HomePage />
+              </Layout>
+            </JukeboxProvider>
           }
         />
         <Route
           path="/play/:boxSlug"
           element={
-            <Layout>
-              <JukeboxProvider>
+            <JukeboxProvider>
+              <Layout>
                 <PlayPage />
-              </JukeboxProvider>
-            </Layout>
+              </Layout>
+            </JukeboxProvider>
           }
         />
         <Route
           path="/share/:boxSlug"
           element={
-            <Layout>
-              <JukeboxProvider>
+            <JukeboxProvider>
+              <Layout>
                 <SharePage />
-              </JukeboxProvider>
-            </Layout>
+              </Layout>
+            </JukeboxProvider>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <JukeboxProvider>
+              <Layout>
+                <ProfilePage />
+              </Layout>
+            </JukeboxProvider>
           }
         />
       </Routes>

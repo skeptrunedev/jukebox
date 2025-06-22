@@ -16,11 +16,17 @@ import {
   createBoxSong,
   updateBoxSong,
   getYouTubeAudioUrl,
+  getUser,
+  createUser,
+  updateUser as updateUserSDK,
 } from "@/sdk";
 import { usePlayerSongs, type SongRow, type PlayerSong } from "@/lib/player";
 import { JukeboxContext } from "@/hooks/useJukeboxContext";
+import fingerprintjs from "@fingerprintjs/fingerprintjs";
+import { usernames } from "@/assets/cool-names";
 
 type Box = components["schemas"]["Box"];
+type User = components["schemas"]["User"];
 
 export interface JukeboxContextValue {
   box?: Box;
@@ -29,7 +35,6 @@ export interface JukeboxContextValue {
   songs: PlayerSong[];
   loading: boolean;
   slug?: string;
-  shareUrl?: string;
   page: number;
   setPage: Dispatch<SetStateAction<number>>;
   addSong: (songData: {
@@ -44,6 +49,10 @@ export interface JukeboxContextValue {
     songId: string,
     status: "queued" | "playing" | "played"
   ) => Promise<void>;
+  updateUser: (data: {
+    username?: string;
+    fingerprint?: string;
+  }) => Promise<void>;
   currentSongIndex: number;
   mediaMap: Record<string, string>;
   /** Get pre-cached audio URL for a YouTube video ID */
@@ -57,6 +66,7 @@ export interface JukeboxContextValue {
   hasPrevious: boolean;
   /** Check if there is a next song available */
   hasNext: boolean;
+  user?: User;
 }
 
 // Helper function to check if two SongRow arrays are equal
@@ -89,6 +99,8 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
   const [page, setPage] = useState(0);
+  const [fingerprint, setFingerprint] = useState<string | undefined>();
+  const [user, setUser] = useState<User | undefined>();
 
   // Media cache: YouTube videoId -> audio URL
   const [mediaMap, setMediaMap] = useState<Record<string, string>>(() => {
@@ -116,10 +128,6 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
       });
     });
   }, []);
-
-  const shareUrl = boxSlug
-    ? `${window.location.origin}/share/${boxSlug}`
-    : undefined;
 
   const fetchBox = useCallback(async () => {
     if (!boxSlug) return;
@@ -194,6 +202,55 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
   }, [boxSlug, page]);
 
   useEffect(() => {
+    const storedFingerprint = localStorage.getItem("jukebox-fingerprint");
+    if (storedFingerprint) {
+      setFingerprint(storedFingerprint);
+    } else {
+      fingerprintjs.load().then((fp) => {
+        fp.get().then((result) => {
+          const fingerprintValue = result.visitorId;
+          setFingerprint(fingerprintValue);
+          localStorage.setItem("jukebox-fingerprint", fingerprintValue);
+        });
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!fingerprint) return;
+
+    const fetchOrCreateUser = async () => {
+      try {
+        const existingUser = await getUser(fingerprint);
+        setUser(existingUser);
+      } catch (error) {
+        // If user not found, create a new one
+        if (error instanceof Error && error.message.includes("404")) {
+          try {
+            const randomUsername =
+              usernames[Math.floor(Math.random() * usernames.length)];
+            if (!randomUsername) {
+              console.error("Could not get a random username");
+              return;
+            }
+            const newUser = await createUser({
+              fingerprint,
+              username: randomUsername,
+            });
+            setUser(newUser);
+          } catch (createError) {
+            console.error("Error creating user:", createError);
+          }
+        } else {
+          console.error("Error fetching user:", error);
+        }
+      }
+    };
+
+    fetchOrCreateUser();
+  }, [fingerprint]);
+
+  useEffect(() => {
     fetchBox();
   }, [fetchBox]);
 
@@ -227,12 +284,13 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
       thumbnail_url: string;
       duration: number;
     }) => {
-      if (!boxSlug) return;
+      if (!boxSlug || !user?.id) return;
       try {
         const song = await createSong(songData);
         const relation = await createBoxSong({
           box_id: boxSlug,
           song_id: song.id || "",
+          user_id: user.id,
           position: rows.length,
           status: "queued",
         });
@@ -262,7 +320,7 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [boxSlug, rows.length]
+    [boxSlug, rows.length, user]
   );
 
   const updateStatus = useCallback(
@@ -277,6 +335,23 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
       }
     },
     []
+  );
+
+  const updateUser = useCallback(
+    async (data: { username?: string; fingerprint?: string }) => {
+      if (!user?.id) {
+        console.error("No user to update");
+        return;
+      }
+      try {
+        const updatedUser = await updateUserSDK(user.id, data);
+        setUser(updatedUser);
+      } catch (error) {
+        console.error("Error updating user:", error);
+        throw error;
+      }
+    },
+    [user]
   );
 
   // Navigation functions for previous/next songs
@@ -308,7 +383,6 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
         songs,
         loading,
         slug: boxSlug,
-        shareUrl,
         page,
         setPage,
         addSong,
@@ -321,6 +395,8 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
         goToNext,
         hasPrevious,
         hasNext,
+        user,
+        updateUser,
       }}
     >
       {children}

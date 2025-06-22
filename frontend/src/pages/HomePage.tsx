@@ -9,8 +9,10 @@ import {
 import { createBox } from "../sdk";
 import { names } from "../assets/cool-names";
 import { CreateBoxDialog } from "../components/CreateBoxDialog";
+import { useJukebox } from "@/hooks/useJukeboxContext";
 
 export default function HomePage() {
+  const { user } = useJukebox();
   const navigate = useNavigate();
 
   // Function to get a random cool name
@@ -19,8 +21,10 @@ export default function HomePage() {
   };
 
   const handleCreateJukebox = async (name: string) => {
+    if (!user?.id) return;
+
     try {
-      const box = await createBox({ name, slug: name });
+      const box = await createBox({ name, slug: name, user_id: user.id });
       if (box.slug) {
         navigate(`/play/${box.slug}`);
       }

@@ -81,12 +81,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a user by ID */
+        /** Get a user by ID or fingerprint */
         get: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
+                    /** @description User ID or fingerprint */
                     id: string;
                 };
                 cookie?: never;
@@ -303,7 +304,8 @@ export interface paths {
                 content: {
                     "application/json": {
                         name: string;
-                        slug: string;
+                        slug?: string;
+                        user_id: string;
                     };
                 };
             };
@@ -369,7 +371,7 @@ export interface paths {
                 };
             };
         };
-        /** Update a box's name */
+        /** Update a box's name or user */
         put: {
             parameters: {
                 query?: never;
@@ -382,7 +384,8 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        name: string;
+                        name?: string;
+                        user_id?: string;
                     };
                 };
             };
@@ -395,6 +398,13 @@ export interface paths {
                     content: {
                         "application/json": components["schemas"]["Box"];
                     };
+                };
+                /** @description User not found */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
                 /** @description Box not found */
                 404: {
@@ -719,6 +729,7 @@ export interface paths {
                         /** @description Box ID or slug */
                         box_id: string;
                         song_id: string;
+                        user_id: string;
                         position: number;
                         /** @enum {string} */
                         status?: "queued" | "playing" | "played";
@@ -795,6 +806,7 @@ export interface paths {
                     "application/json": {
                         box_id?: string;
                         song_id?: string;
+                        user_id?: string;
                         position?: number;
                         /** @enum {string} */
                         status?: "queued" | "playing" | "played";
@@ -926,6 +938,7 @@ export interface components {
             id?: string;
             name?: string;
             slug?: string;
+            user_id?: string;
         };
         Song: {
             id?: string;
@@ -940,6 +953,7 @@ export interface components {
             id?: string;
             box_id?: string;
             song_id?: string;
+            user_id?: string;
             position?: number;
             /** @enum {string} */
             status?: "queued" | "playing" | "played";

@@ -142,13 +142,14 @@ app.get("/api/users", async (req, res) => {
  *   get:
  *     tags:
  *       - Users
- *     summary: Get a user by ID
+ *     summary: Get a user by ID or fingerprint
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
+ *         description: User ID or fingerprint
  *     responses:
  *       200:
  *         description: A user object
@@ -161,10 +162,11 @@ app.get("/api/users", async (req, res) => {
  */
 app.get("/api/users/:id", async (req, res) => {
   try {
+    const identifier = req.params.id;
     const user = await db
       .selectFrom("users")
       .selectAll()
-      .where("id", "=", req.params.id)
+      .where(sql<boolean>`id = ${identifier} OR fingerprint = ${identifier}`)
       .executeTakeFirst();
     if (!user) {
       return void res.status(404).json({ error: "User not found" });
