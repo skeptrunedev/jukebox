@@ -10,6 +10,7 @@ import {
 
 /** Definition of a column: header and cell renderer */
 export interface Column<Row> {
+  id?: string;
   header: ReactNode;
   cell: (row: Row, index: number) => ReactNode;
 }
@@ -27,14 +28,18 @@ export function SongTable<Row>({
   rows: Row[];
   columns: Column<Row>[];
   getRowProps?: (row: Row, index: number) => { key: Key; className?: string };
-  renderRow?: (row: Row, columns: Column<Row>[], getRowProps?: (row: Row, index: number) => { key: Key; className?: string }) => ReactNode;
+  renderRow?: (
+    row: Row,
+    columns: Column<Row>[],
+    getRowProps?: (row: Row, index: number) => { key: Key; className?: string }
+  ) => ReactNode;
 }) {
   return (
     <Table>
       <TableHeader>
         <TableRow>
           {columns.map((col, idx) => (
-            <TableHead key={idx}>{col.header}</TableHead>
+            <TableHead key={col.id ?? idx}>{col.header}</TableHead>
           ))}
         </TableRow>
       </TableHeader>
@@ -47,7 +52,9 @@ export function SongTable<Row>({
           return (
             <TableRow key={props.key} className={props.className}>
               {columns.map((col, colIndex) => (
-                <TableCell key={colIndex}>{col.cell(row, rowIndex)}</TableCell>
+                <TableCell key={col.id ?? colIndex}>
+                  {col.cell(row, rowIndex)}
+                </TableCell>
               ))}
             </TableRow>
           );

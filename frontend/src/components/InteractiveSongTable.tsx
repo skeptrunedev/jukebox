@@ -25,6 +25,7 @@ import {
   restrictToVerticalAxis,
 } from "@dnd-kit/modifiers";
 import { updateBoxSong } from "@/sdk";
+import { GripVertical } from "lucide-react";
 
 const SortableRow = ({
   row,
@@ -52,10 +53,12 @@ const SortableRow = ({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
       key={rowProps.key}
       className={rowProps.className}
     >
+      <TableCell {...listeners} className="cursor-grab">
+        <GripVertical />
+      </TableCell>
       {columns.map((col, colIndex) => (
         <TableCell key={colIndex}>{col.cell(row, 0)}</TableCell>
       ))}
@@ -112,12 +115,19 @@ export function InteractiveSongTable({
       >
         <SongTable<SongRow>
           rows={rows}
-          columns={columns}
+          columns={[
+            {
+              id: "drag-handle",
+              header: "",
+              cell: () => null,
+            },
+            ...columns,
+          ]}
           getRowProps={getRowProps}
           renderRow={(row, columns, getRowProps) => (
             <SortableRow
               row={row}
-              columns={columns}
+              columns={columns.slice(1)}
               getRowProps={getRowProps}
             />
           )}
