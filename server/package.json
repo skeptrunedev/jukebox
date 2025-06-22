@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "migrate": "knex migrate:latest",
+    "reset-db": "rm -f dev.sqlite3 && knex migrate:latest && echo 'Database reset and migrations applied.'",
     "rollback": "knex migrate:rollback",
     "generate:sdk": "openapi-typescript http://localhost:3001/openapi.json --output ../frontend/src/sdk/api.ts",
     "test": "mocha --require ts-node/register tests/api/**/*.test.ts --exit"
