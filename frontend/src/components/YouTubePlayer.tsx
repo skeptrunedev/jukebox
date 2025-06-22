@@ -38,9 +38,9 @@ export const YouTubePlayer = () => {
       if (audioRef.current.src !== mediaUrl) {
         audioRef.current.src = mediaUrl;
         setDuration(currentSong.duration ?? 0);
-        // setCurrentTime(0);
+        setCurrentTime(0);
         setIsPlaying(false);
-        setIsLoading(false);
+        setIsLoading(true);
       }
     } else {
       console.warn("No media URL found for song:", currentSong.title);
@@ -53,11 +53,11 @@ export const YouTubePlayer = () => {
     if (!audio) return;
 
     const handleTimeUpdate = () => {
-      console.log("Time update:", audio.currentTime);
       setCurrentTime(audio.currentTime);
     };
 
     const handleLoadedMetadata = () => {
+      console.log("Audio metadata loaded:", audio.duration);
       setDuration(audio.duration);
       if (isNaN(audio.duration) || audio.duration === 0) {
         console.warn("Invalid audio duration detected");
@@ -96,16 +96,6 @@ export const YouTubePlayer = () => {
       console.error("Audio playback error");
     };
 
-    const handleSeeked = () => {
-      // Seek operation completed successfully
-      if (seekTimeoutRef.current) {
-        console.log("Seek completed successfully, clearing timeout");
-        clearTimeout(seekTimeoutRef.current);
-        seekTimeoutRef.current = null;
-      }
-      console.log("Seek completed successfully at:", audio.currentTime);
-    };
-
     // Add event listeners
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
@@ -115,7 +105,6 @@ export const YouTubePlayer = () => {
     audio.addEventListener("loadstart", handleLoadStart);
     audio.addEventListener("canplay", handleCanPlay);
     audio.addEventListener("error", handleError);
-    audio.addEventListener("seeked", handleSeeked);
 
     // Cleanup function
     return () => {
@@ -127,7 +116,6 @@ export const YouTubePlayer = () => {
       audio.removeEventListener("loadstart", handleLoadStart);
       audio.removeEventListener("canplay", handleCanPlay);
       audio.removeEventListener("error", handleError);
-      audio.removeEventListener("seeked", handleSeeked);
     };
   }, [currentSongIndex, songs.length, goToNext]);
 
@@ -152,7 +140,7 @@ export const YouTubePlayer = () => {
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     const audio = audioRef.current;
-    if (!audio || duration === 0) return;
+    if (!audio || duration === 0 || isLoading) return;
 
     // Prevent seeking if audio is not ready
     if (audio.readyState < 2) return; // HAVE_CURRENT_DATA or higher
@@ -182,17 +170,19 @@ export const YouTubePlayer = () => {
         duration
       );
 
-      // Wait for the seek to complete or timeout after a reasonable time
       seekTimeoutRef.current = setTimeout(() => {
-        // Verify the seek was successful, if not, update UI to actual position
         if (Math.abs(audio.currentTime - clampedTime) > 1) {
-          console.warn("Seek may have failed, actual time:", audio.currentTime);
+          console.warn(
+            "Seek may have failed, actual time:",
+            audio.currentTime,
+            "expected:",
+            clampedTime
+          );
           setCurrentTime(audio.currentTime);
         }
-      }, 500); // 500ms timeout for seek operation
+      }, 500);
     } catch (error) {
       console.error("Seek failed:", error);
-      // Reset to actual audio position on error
       setCurrentTime(audio.currentTime);
     }
   };
