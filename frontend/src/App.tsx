@@ -3,6 +3,7 @@ import HomePage from "@/pages/HomePage";
 import PlayPage from "@/pages/PlayPage";
 import SharePage from "@/pages/SharePage";
 import { Layout } from "@/components/ui/layout";
+import { JukeboxProvider } from "@/contexts/JukeboxContext";
 
 function App() {
   return (
@@ -20,7 +21,9 @@ function App() {
           path="/play/:boxSlug"
           element={
             <Layout>
-              <PlayPage />
+              <JukeboxProvider>
+                <PlayPage />
+              </JukeboxProvider>
             </Layout>
           }
         />
@@ -28,7 +31,9 @@ function App() {
           path="/share/:boxSlug"
           element={
             <Layout>
-              <SharePage />
+              <JukeboxProvider>
+                <SharePage />
+              </JukeboxProvider>
             </Layout>
           }
         />

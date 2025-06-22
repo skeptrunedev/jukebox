@@ -3,24 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Play, Pause, SkipForward, SkipBack } from "lucide-react";
 import { getYouTubeAudioUrl } from "@/sdk";
-import type { PlayerSong } from "@/lib/player";
+import { useJukebox } from "@/hooks/useJukeboxContext";
 
-interface YouTubePlayerProps {
-  songs: PlayerSong[];
-  currentSongIndex: number;
-  onSongChange: (index: number) => void;
-  onStatusUpdate?: (
-    songId: string,
-    status: "queued" | "playing" | "played"
-  ) => void;
-}
-
-export default function YouTubePlayer({
-  songs,
-  currentSongIndex,
-  onSongChange,
-  onStatusUpdate,
-}: YouTubePlayerProps) {
+export default function YouTubePlayer() {
+  const { songs, currentSongIndex, setCurrentSongIndex, updateStatus } =
+    useJukebox();
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -29,40 +16,33 @@ export default function YouTubePlayer({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const currentSong = songs[currentSongIndex];
 
-  // Memoize handleStatusUpdate to prevent unnecessary re-renders
+  // Memoize status updates to prevent unnecessary re-renders
   const stableStatusUpdate = useCallback(
     (songId: string, status: "queued" | "playing" | "played") => {
-      if (onStatusUpdate) {
-        onStatusUpdate(songId, status);
-      }
+      updateStatus(songId, status);
     },
-    [onStatusUpdate]
+    [updateStatus]
   );
 
   const handleNext = useCallback(() => {
     if (currentSongIndex < songs.length - 1) {
-      // Mark current song as played when skipping forward
       if (currentSong) {
         stableStatusUpdate(currentSong.id, "played");
       }
       const nextIndex = currentSongIndex + 1;
-      onSongChange(nextIndex);
+      setCurrentSongIndex(nextIndex);
 
-      // If user has interacted before, continue playing
       if (hasInteracted && isPlaying) {
-        // The useEffect will load the new song, and we'll need to play it
         setTimeout(() => {
           const audio = audioRef.current;
-          if (audio) {
-            audio.play().catch(console.error);
-          }
+          audio?.play().catch(console.error);
         }, 100);
       }
     }
   }, [
     currentSongIndex,
     songs.length,
-    onSongChange,
+    setCurrentSongIndex,
     currentSong,
     stableStatusUpdate,
     hasInteracted,
@@ -71,27 +51,22 @@ export default function YouTubePlayer({
 
   const handlePrevious = useCallback(() => {
     if (currentSongIndex > 0) {
-      // Mark current song as played when skipping backward
       if (currentSong) {
         stableStatusUpdate(currentSong.id, "played");
       }
       const prevIndex = currentSongIndex - 1;
-      onSongChange(prevIndex);
+      setCurrentSongIndex(prevIndex);
 
-      // If user has interacted before, continue playing
       if (hasInteracted && isPlaying) {
-        // The useEffect will load the new song, and we'll need to play it
         setTimeout(() => {
           const audio = audioRef.current;
-          if (audio) {
-            audio.play().catch(console.error);
-          }
+          audio?.play().catch(console.error);
         }, 100);
       }
     }
   }, [
     currentSongIndex,
-    onSongChange,
+    setCurrentSongIndex,
     currentSong,
     stableStatusUpdate,
     hasInteracted,
@@ -120,26 +95,18 @@ export default function YouTubePlayer({
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
     const handlePlay = () => {
       setIsPlaying(true);
-      if (currentSong) {
-        stableStatusUpdate(currentSong.id, "playing");
-      }
+      stableStatusUpdate(currentSong.id, "playing");
     };
     const handlePause = () => setIsPlaying(false);
     const handleEnded = () => {
       setIsPlaying(false);
-      if (currentSong) {
-        stableStatusUpdate(currentSong.id, "played");
-      }
-      // Move to next song when current song ends, but only if user has interacted
+      stableStatusUpdate(currentSong.id, "played");
       if (hasInteracted && currentSongIndex < songs.length - 1) {
         const nextIndex = currentSongIndex + 1;
-        onSongChange(nextIndex);
-        // Auto-play next song since user has interacted
+        setCurrentSongIndex(nextIndex);
         setTimeout(() => {
           const audio = audioRef.current;
-          if (audio) {
-            audio.play().catch(console.error);
-          }
+          audio?.play().catch(console.error);
         }, 100);
       }
     };
@@ -175,7 +142,7 @@ export default function YouTubePlayer({
     stableStatusUpdate,
     currentSongIndex,
     songs.length,
-    onSongChange,
+    setCurrentSongIndex,
     hasInteracted,
   ]);
 
