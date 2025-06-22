@@ -60,8 +60,8 @@ describe("BoxSongs API", () => {
   it("should list box-song relations", async () => {
     const res = await request(app).get("/api/box_songs");
     expect(res.status).to.equal(200);
-    expect(res.body).to.be.an("array");
-    const relation = res.body.find((rel: any) => rel.id === relId);
+    expect(res.body.data).to.be.an("array");
+    const relation = res.body.data.find((rel: any) => rel.id === relId);
     expect(relation).to.exist;
     expect(relation.box_id).to.equal(boxId);
     expect(relation.song_id).to.equal(songId);

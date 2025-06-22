@@ -66,6 +66,15 @@ console.error = (...args: unknown[]) => {
  *             - queued
  *             - playing
  *             - played
+ *     User:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *         fingerprint:
+ *           type: string
+ *         username:
+ *           type: string
  */
 import express, { NextFunction } from "express";
 import cors from "cors";
@@ -95,6 +104,234 @@ app.use((req, res, next) => {
     console.log(`${req.method} ${req.originalUrl} ${res.statusCode} ${ms}ms`);
   });
   next();
+});
+
+/**
+ * @openapi
+ * /api/users:
+ *   get:
+ *     tags:
+ *       - Users
+ *     summary: Get all users
+ *     responses:
+ *       200:
+ *         description: A list of users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/User'
+ */
+app.get("/api/users", async (req, res) => {
+  try {
+    const users = await db.selectFrom("users").selectAll().execute();
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+/**
+ * @openapi
+ * /api/users/{id}:
+ *   get:
+ *     tags:
+ *       - Users
+ *     summary: Get a user by ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: A user object
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       404:
+ *         description: User not found
+ */
+app.get("/api/users/:id", async (req, res) => {
+  try {
+    const user = await db
+      .selectFrom("users")
+      .selectAll()
+      .where("id", "=", req.params.id)
+      .executeTakeFirst();
+    if (!user) {
+      return void res.status(404).json({ error: "User not found" });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+/**
+ * @openapi
+ * /api/users:
+ *   post:
+ *     tags:
+ *       - Users
+ *     summary: Create a new user
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fingerprint:
+ *                 type: string
+ *               username:
+ *                 type: string
+ *             required:
+ *               - fingerprint
+ *               - username
+ *     responses:
+ *       201:
+ *         description: Created user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       409:
+ *         description: Fingerprint already exists
+ */
+app.post("/api/users", async (req, res) => {
+  try {
+    const id = randomUUID();
+    const { fingerprint, username } = req.body;
+    const existing = await db
+      .selectFrom("users")
+      .select("id")
+      .where("fingerprint", "=", fingerprint)
+      .executeTakeFirst();
+    if (existing) {
+      return void res.status(409).json({ error: "Fingerprint already exists" });
+    }
+
+    await db
+      .insertInto("users")
+      .values({ id, fingerprint, username })
+      .execute();
+    res.status(201).json({ id, fingerprint, username });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+/**
+ * @openapi
+ * /api/users/{id}:
+ *   put:
+ *     tags:
+ *       - Users
+ *     summary: Update a user's fingerprint or username
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fingerprint:
+ *                 type: string
+ *               username:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Updated user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       404:
+ *         description: User not found
+ *       409:
+ *         description: Fingerprint already exists
+ */
+app.put("/api/users/:id", async (req, res) => {
+  try {
+    const { fingerprint, username } = req.body;
+    const updates: Record<string, unknown> = {};
+    if (fingerprint !== undefined) {
+      const existingFingerprint = await db
+        .selectFrom("users")
+        .select("id")
+        .where("fingerprint", "=", fingerprint)
+        .where("id", "!=", req.params.id)
+        .executeTakeFirst();
+      if (existingFingerprint) {
+        return void res
+          .status(409)
+          .json({ error: "Fingerprint already exists" });
+      }
+      updates.fingerprint = fingerprint;
+    }
+    if (username !== undefined) updates.username = username;
+
+    const updatedRows = await db
+      .updateTable("users")
+      .set(updates)
+      .where("id", "=", req.params.id)
+      .execute();
+    if (!updatedRows.length) {
+      return void res.status(404).json({ error: "User not found" });
+    }
+    const user = await db
+      .selectFrom("users")
+      .selectAll()
+      .where("id", "=", req.params.id)
+      .executeTakeFirst();
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+/**
+ * @openapi
+ * /api/users/{id}:
+ *   delete:
+ *     tags:
+ *       - Users
+ *     summary: Delete a user by ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       204:
+ *         description: No content (user deleted)
+ *       404:
+ *         description: User not found
+ */
+app.delete("/api/users/:id", async (req, res) => {
+  try {
+    const deletedRows = await db
+      .deleteFrom("users")
+      .where("id", "=", req.params.id)
+      .execute();
+    if (!deletedRows.length) {
+      return void res.status(404).json({ error: "User not found" });
+    }
+    res.status(204).end();
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
 });
 setupSwagger(app);
 

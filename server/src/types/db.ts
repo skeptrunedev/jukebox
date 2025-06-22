@@ -20,4 +20,9 @@ export interface Database {
     position: number;
     status: 'queued' | 'playing' | 'played';
   };
+  users: {
+    id: string;
+    fingerprint: string;
+    username: string;
+  };
 }
