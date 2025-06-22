@@ -80,6 +80,15 @@ const port = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+0; // Log every incoming request and its outcome
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    const ms = Date.now() - start;
+    console.log(`${req.method} ${req.originalUrl} ${res.statusCode} ${ms}ms`);
+  });
+  next();
+});
 setupSwagger(app);
 
 /**
