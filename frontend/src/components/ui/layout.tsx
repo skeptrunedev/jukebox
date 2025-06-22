@@ -219,12 +219,12 @@ export function Layout({ children }: LayoutProps) {
         <footer className="border-t-4 border-border bg-secondary-background px-5 py-6 mt-auto">
           <div className="mx-auto flex w-[1300px] max-w-full flex-col sm:flex-row items-center justify-between gap-4 sm:gap-0 text-sm text-foreground/70">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-4">
-              <span>Contact us:</span>
+              <span>Contact:</span>
               <a
-                href="mailto:humans@usejukebox.com"
+                href="https://x.com/skeptrune"
                 className="text-main hover:text-main/80 transition-colors"
               >
-                humans@usejukebox.com
+                DM @skeptrune on X
               </a>
             </div>
             <div className="flex items-center gap-1">

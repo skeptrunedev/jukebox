@@ -1,4 +1,18 @@
 import "dotenv/config";
+// Redirect console output to a log sink file as well as stdout
+import fs from "fs";
+import util from "util";
+const logStream = fs.createWriteStream("logsink.log", { flags: "a" });
+const origLog = console.log;
+const origErr = console.error;
+console.log = (...args: unknown[]) => {
+  logStream.write(util.format(...args) + "\n");
+  origLog(...args);
+};
+console.error = (...args: unknown[]) => {
+  logStream.write(util.format(...args) + "\n");
+  origErr(...args);
+};
 
 /**
  * @openapi
@@ -219,12 +233,10 @@ app.post("/api/boxes", async (req, res, _next: NextFunction) => {
     const id = randomUUID();
     const { name, slug: providedSlug } = req.body;
     // Generate slug from name if not provided
-    let slug =
-      providedSlug ||
-      name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
+    let slug = (providedSlug || name)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
 
     // Check for slug conflict and make unique if needed
     let uniqueSlug = slug;
@@ -981,7 +993,7 @@ if (require.main === module) {
   });
 } else {
   // For testing, listen on ephemeral port bound to localhost
-  server.listen(0, '127.0.0.1');
+  server.listen(0, "127.0.0.1");
 }
 
 export default server;
