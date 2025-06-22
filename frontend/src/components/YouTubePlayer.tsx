@@ -25,6 +25,7 @@ export default function YouTubePlayer({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const currentSong = songs[currentSongIndex];
 
@@ -46,6 +47,17 @@ export default function YouTubePlayer({
       }
       const nextIndex = currentSongIndex + 1;
       onSongChange(nextIndex);
+
+      // If user has interacted before, continue playing
+      if (hasInteracted && isPlaying) {
+        // The useEffect will load the new song, and we'll need to play it
+        setTimeout(() => {
+          const audio = audioRef.current;
+          if (audio) {
+            audio.play().catch(console.error);
+          }
+        }, 100);
+      }
     }
   }, [
     currentSongIndex,
@@ -53,6 +65,8 @@ export default function YouTubePlayer({
     onSongChange,
     currentSong,
     stableStatusUpdate,
+    hasInteracted,
+    isPlaying,
   ]);
 
   const handlePrevious = useCallback(() => {
@@ -63,8 +77,26 @@ export default function YouTubePlayer({
       }
       const prevIndex = currentSongIndex - 1;
       onSongChange(prevIndex);
+
+      // If user has interacted before, continue playing
+      if (hasInteracted && isPlaying) {
+        // The useEffect will load the new song, and we'll need to play it
+        setTimeout(() => {
+          const audio = audioRef.current;
+          if (audio) {
+            audio.play().catch(console.error);
+          }
+        }, 100);
+      }
     }
-  }, [currentSongIndex, onSongChange, currentSong, stableStatusUpdate]);
+  }, [
+    currentSongIndex,
+    onSongChange,
+    currentSong,
+    stableStatusUpdate,
+    hasInteracted,
+    isPlaying,
+  ]);
 
   // Initialize audio element when song changes
   useEffect(() => {
@@ -98,10 +130,17 @@ export default function YouTubePlayer({
       if (currentSong) {
         stableStatusUpdate(currentSong.id, "played");
       }
-      // Move to next song when current song ends
-      if (currentSongIndex < songs.length - 1) {
+      // Move to next song when current song ends, but only if user has interacted
+      if (hasInteracted && currentSongIndex < songs.length - 1) {
         const nextIndex = currentSongIndex + 1;
         onSongChange(nextIndex);
+        // Auto-play next song since user has interacted
+        setTimeout(() => {
+          const audio = audioRef.current;
+          if (audio) {
+            audio.play().catch(console.error);
+          }
+        }, 100);
       }
     };
     const handleError = (e: Event) => {
@@ -118,9 +157,9 @@ export default function YouTubePlayer({
     audio.addEventListener("ended", handleEnded);
     audio.addEventListener("error", handleError);
 
-    // Auto-play when ready
+    // Auto-play when ready - REMOVED to prevent autoplay issues
     audio.load();
-    audio.play().catch(console.error);
+    // Don't auto-play - let user interact first
 
     return () => {
       audio.removeEventListener("loadstart", handleLoadStart);
@@ -137,16 +176,23 @@ export default function YouTubePlayer({
     currentSongIndex,
     songs.length,
     onSongChange,
+    hasInteracted,
   ]);
 
-  const handlePlayPause = () => {
+  const handlePlayPause = async () => {
     const audio = audioRef.current;
     if (!audio) return;
 
     if (isPlaying) {
       audio.pause();
     } else {
-      audio.play().catch(console.error);
+      try {
+        setHasInteracted(true);
+        await audio.play();
+      } catch (error) {
+        console.error("Playback failed:", error);
+        // The error will be handled by the audio error event listener
+      }
     }
   };
 
@@ -260,6 +306,16 @@ export default function YouTubePlayer({
               <SkipForward className="h-4 w-4" />
             </Button>
           </div>
+
+          {/* User interaction message */}
+          {!hasInteracted && !isPlaying && (
+            <div className="text-center text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
+              <p className="font-medium">Ready to play!</p>
+              <p>
+                Click the play button above to start listening to your jukebox.
+              </p>
+            </div>
+          )}
 
           {/* Playlist Info */}
           <div className="text-center text-sm text-gray-600">

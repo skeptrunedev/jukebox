@@ -15,6 +15,7 @@
     "test": "mocha --require ts-node/register tests/api/**/*.test.ts --exit"
   },
   "dependencies": {
+    "@distube/ytdl-core": "^4.16.12",
     "better-sqlite3": "^11.10.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
@@ -23,8 +24,7 @@
     "kysely": "^0.28.2",
     "sqlite3": "^5.1.6",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1",
-    "ytdl-core": "^4.11.5"
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.5.0",

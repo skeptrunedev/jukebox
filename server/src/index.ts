@@ -74,7 +74,7 @@ import { randomUUID } from "crypto";
 import { sql } from "kysely";
 import { setupSwagger } from "./swagger";
 import http from "http";
-import ytdl from "ytdl-core";
+import ytdl from "@distube/ytdl-core";
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -150,20 +150,63 @@ app.get("/api/youtube/audio", async (req, res) => {
       .status(400)
       .json({ error: "videoId query parameter is required" });
   }
+
   try {
+    // Validate the video ID format
+    if (!ytdl.validateID(videoId)) {
+      return void res.status(400).json({ error: "Invalid YouTube video ID" });
+    }
+
+    // Check if the video is available
+    const isValid = await ytdl.validateURL(
+      `https://www.youtube.com/watch?v=${videoId}`
+    );
+    if (!isValid) {
+      return void res
+        .status(404)
+        .json({ error: "Video not found or unavailable" });
+    }
+
     const info = await ytdl.getInfo(videoId);
-    const format = ytdl.chooseFormat(info.formats, { quality: "highestaudio" });
+    const format = ytdl.chooseFormat(info.formats, {
+      quality: "highestaudio",
+      filter: "audioonly",
+    });
+
     if (!format || !format.mimeType) {
       return void res
         .status(500)
         .json({ error: "No suitable audio format found" });
     }
+
     const mimeType = format.mimeType.split(";")[0];
     res.setHeader("Content-Type", mimeType);
-    ytdl(videoId, { filter: "audioonly", quality: "highestaudio" }).pipe(res);
+    res.setHeader("Accept-Ranges", "bytes");
+
+    const stream = ytdl(videoId, {
+      filter: "audioonly",
+      quality: "highestaudio",
+      requestOptions: {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        },
+      },
+    });
+
+    stream.on("error", (error) => {
+      console.error("Stream error:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Stream error occurred" });
+      }
+    });
+
+    stream.pipe(res);
   } catch (error) {
     console.error("Error streaming YouTube audio:", error);
-    res.status(500).json({ error: "Failed to stream audio" });
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Failed to stream audio" });
+    }
   }
 });
 
