@@ -54,12 +54,27 @@ export async function updateBox(
 }
 
 /**
- * Fetch all box-song relationships.
+ * Fetch box-song relationships with pagination support.
  */
-export async function getBoxSongs(): Promise<
-  components["schemas"]["BoxSong"][]
+export async function getBoxSongs(options?: {
+  limit?: number;
+  offset?: number;
+}): Promise<
+  paths["/api/box_songs"]["get"]["responses"]["200"]["content"]["application/json"]
 > {
-  const response = await fetch(`${API_HOST}/api/box_songs`);
+  const params = new URLSearchParams();
+  if (options?.limit !== undefined) {
+    params.append("limit", options.limit.toString());
+  }
+  if (options?.offset !== undefined) {
+    params.append("offset", options.offset.toString());
+  }
+
+  const url = params.toString()
+    ? `${API_HOST}/api/box_songs?${params}`
+    : `${API_HOST}/api/box_songs`;
+
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error(
       `Failed to fetch box-songs: ${response.status} ${response.statusText}`
@@ -76,6 +91,24 @@ export async function getSongs(): Promise<components["schemas"]["Song"][]> {
   if (!response.ok) {
     throw new Error(
       `Failed to fetch songs: ${response.status} ${response.statusText}`
+    );
+  }
+  return await response.json();
+}
+
+/**
+ * Fetch songs by multiple IDs.
+ */
+export async function getSongsByIds(
+  ids: string[]
+): Promise<components["schemas"]["Song"][]> {
+  const idsParam = ids.join(",");
+  const params = new URLSearchParams({ ids: idsParam });
+
+  const response = await fetch(`${API_HOST}/api/songs/by-ids?${params}`);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch songs by IDs: ${response.status} ${response.statusText}`
     );
   }
   return await response.json();

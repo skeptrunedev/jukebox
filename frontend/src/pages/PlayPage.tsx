@@ -11,7 +11,7 @@ import type { SongRow } from "@/lib/player";
 import { useJukebox } from "@/hooks/useJukeboxContext";
 
 export default function PlayPage() {
-  const { rows, loading, shareUrl, addSong, currentSongIndex } = useJukebox();
+  const { rows, shareUrl, addSong, currentSongIndex } = useJukebox();
   const [copyButtonText, setCopyButtonText] = useState<ReactNode>(
     <>
       <Copy className="w-4 h-4 mr-1" />
@@ -59,10 +59,6 @@ export default function PlayPage() {
       );
     }
   };
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
 
   return (
     <div className="flex flex-1 items-center justify-center p-5 w-full bg-background/40">
@@ -120,8 +116,26 @@ export default function PlayPage() {
                 columns={
                   [
                     { header: "#", cell: (_, i) => i + 1 },
-                    { header: "Title", cell: (r) => r.title },
-                    { header: "Artist", cell: (r) => r.artist },
+                    {
+                      header: "Title",
+                      cell: (r) => (
+                        <span
+                          dangerouslySetInnerHTML={{
+                            __html: r.title ?? "Unknown Title",
+                          }}
+                        />
+                      ),
+                    },
+                    {
+                      header: "Artist",
+                      cell: (r) => (
+                        <span
+                          dangerouslySetInnerHTML={{
+                            __html: r.artist ?? "Unknown Artist",
+                          }}
+                        />
+                      ),
+                    },
                     {
                       header: "Duration",
                       cell: (r) =>

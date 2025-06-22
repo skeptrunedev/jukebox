@@ -321,6 +321,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/songs/by-ids": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get songs by multiple IDs */
+        get: {
+            parameters: {
+                query: {
+                    /** @example 1,2,3 */
+                    ids: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description A list of songs matching the provided IDs */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Song"][];
+                    };
+                };
+                /** @description Invalid or missing IDs parameter */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/songs/{id}": {
         parameters: {
             query?: never;
@@ -440,23 +486,35 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get all box-song relationships */
+        /** Get all box-song relationships with pagination */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Maximum number of results to return */
+                    limit?: number;
+                    /** @description Number of results to skip */
+                    offset?: number;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description A list of box-song relations */
+                /** @description A paginated list of box-song relations */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["BoxSong"][];
+                        "application/json": {
+                            data?: components["schemas"]["BoxSong"][];
+                            pagination?: {
+                                limit?: number;
+                                offset?: number;
+                                total?: number;
+                            };
+                        };
                     };
                 };
             };

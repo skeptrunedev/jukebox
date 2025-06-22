@@ -5,10 +5,7 @@ import { Check, Clock, Play } from "lucide-react";
 import { useJukebox } from "@/hooks/useJukeboxContext";
 
 export default function SharePage() {
-  const { rows, loading, addSong } = useJukebox();
-  if (loading) {
-    return <div>Loading...</div>;
-  }
+  const { rows, addSong } = useJukebox();
 
   return (
     <div className="flex flex-1 items-center justify-center p-5 w-full bg-background/40">

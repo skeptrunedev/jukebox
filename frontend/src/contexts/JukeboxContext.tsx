@@ -11,10 +11,11 @@ import type { components } from "@/sdk/api";
 import {
   getBox,
   getBoxSongs,
-  getSongs,
+  getSongsByIds,
   createSong,
   createBoxSong,
   updateBoxSong,
+  getYouTubeAudioUrl,
 } from "@/sdk";
 import { usePlayerSongs, type SongRow, type PlayerSong } from "@/lib/player";
 import { JukeboxContext } from "@/hooks/useJukeboxContext";
@@ -28,6 +29,8 @@ export interface JukeboxContextValue {
   loading: boolean;
   slug?: string;
   shareUrl?: string;
+  page: number;
+  setPage: Dispatch<SetStateAction<number>>;
   addSong: (songData: {
     title: string;
     artist: string;
@@ -41,8 +44,41 @@ export interface JukeboxContextValue {
     status: "queued" | "playing" | "played"
   ) => Promise<void>;
   currentSongIndex: number;
+  mediaMap: Record<string, string>;
+  /** Get pre-cached audio URL for a YouTube video ID */
+  getMediaUrl: (youtubeId: string) => string | undefined;
   setCurrentSongIndex: Dispatch<SetStateAction<number>>;
+  /** Go to the previous song in the playlist */
+  goToPrevious: () => void;
+  /** Go to the next song in the playlist */
+  goToNext: () => void;
+  /** Check if there is a previous song available */
+  hasPrevious: boolean;
+  /** Check if there is a next song available */
+  hasNext: boolean;
 }
+
+// Helper function to check if two SongRow arrays are equal
+const areSongRowsEqual = (prev: SongRow[], next: SongRow[]): boolean => {
+  if (prev.length !== next.length) return false;
+
+  return prev.every((prevRow, index) => {
+    const nextRow = next[index];
+    if (!nextRow) return false;
+
+    return (
+      prevRow.id === nextRow.id &&
+      prevRow.position === nextRow.position &&
+      prevRow.title === nextRow.title &&
+      prevRow.artist === nextRow.artist &&
+      prevRow.youtube_id === nextRow.youtube_id &&
+      prevRow.youtube_url === nextRow.youtube_url &&
+      prevRow.thumbnail_url === nextRow.thumbnail_url &&
+      prevRow.duration === nextRow.duration &&
+      prevRow.status === nextRow.status
+    );
+  });
+};
 
 export function JukeboxProvider({ children }: { children: ReactNode }) {
   const { boxSlug } = useParams<{ boxSlug: string }>();
@@ -51,6 +87,34 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
   const songs = usePlayerSongs(rows);
   const [loading, setLoading] = useState(true);
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
+  const [page, setPage] = useState(0);
+
+  // Media cache: YouTube videoId -> audio URL
+  const [mediaMap, setMediaMap] = useState<Record<string, string>>(() => {
+    try {
+      const data = localStorage.getItem("jukebox-media-cache");
+      return data ? JSON.parse(data) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  /** Prefetch and cache audio URLs for given YouTube IDs */
+  const prefetchMedia = useCallback((ids: string[]) => {
+    ids.forEach((id) => {
+      setMediaMap((prev) => {
+        if (prev[id]) return prev;
+        const url = getYouTubeAudioUrl(id);
+        const updated = { ...prev, [id]: url };
+        try {
+          localStorage.setItem("jukebox-media-cache", JSON.stringify(updated));
+        } catch {
+          // ignore
+        }
+        return updated;
+      });
+    });
+  }, []);
 
   const shareUrl = boxSlug
     ? `${window.location.origin}/share/${boxSlug}`
@@ -67,61 +131,85 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
     }
   }, [boxSlug]);
 
+  const fetchBoxSongs = useCallback(async () => {
+    if (!boxSlug) return;
+    setLoading(true);
+    try {
+      const limit = 20; // You can make this configurable
+      const offset = page * limit;
+      const response = await getBoxSongs({ limit, offset });
+
+      if (!response.data || response.data.length === 0) {
+        setRows((prevRows) => {
+          // Only clear if we actually had rows before
+          return prevRows.length > 0 ? [] : prevRows;
+        });
+        return;
+      }
+
+      // Get all unique song IDs from the box songs
+      const songIds = response.data
+        .map((boxSong) => boxSong.song_id)
+        .filter((id): id is string => Boolean(id));
+
+      // Fetch song details for these IDs
+      const songs = await getSongsByIds(songIds);
+      const songMap = new Map(songs.map((song) => [song.id, song]));
+
+      // Convert box songs to SongRow format
+      const newSongRows: SongRow[] = response.data
+        .map((boxSong) => {
+          const song = songMap.get(boxSong.song_id || "");
+          if (!song) return null;
+
+          return {
+            id: boxSong.id || "",
+            position: boxSong.position ?? 0,
+            title: song.title || "",
+            artist: song.artist || "",
+            youtube_id: song.youtube_id || "",
+            youtube_url: song.youtube_url || "",
+            thumbnail_url: song.thumbnail_url || "",
+            duration: song.duration || 0,
+            status: boxSong.status ?? "queued",
+          };
+        })
+        .filter(
+          (row): row is NonNullable<typeof row> => row !== null
+        ) as SongRow[]; // Only update state if the data has actually changed
+      setRows((prevRows) => {
+        // Use helper function for deep comparison
+        return areSongRowsEqual(prevRows, newSongRows) ? prevRows : newSongRows;
+      });
+    } catch (error) {
+      console.error("Error loading box songs:", error);
+      setRows((prevRows) => {
+        // Only clear on error if we had rows before
+        return prevRows.length > 0 ? [] : prevRows;
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [boxSlug, page]);
+
   useEffect(() => {
     fetchBox();
   }, [fetchBox]);
 
-  const fetchSongs = useCallback(
-    async (isInitialLoad = false) => {
-      if (!boxSlug || !box?.id) return;
-      try {
-        const [boxSongs, allSongs] = await Promise.all([
-          getBoxSongs(),
-          getSongs(),
-        ]);
-        const filtered = boxSongs
-          .filter((bs) => bs.box_id === box.id)
-          .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-        const songMap = new Map(allSongs.map((s) => [s.id, s]));
-        const newRows: SongRow[] = filtered.map((bs) => ({
-          id: bs.id || "",
-          position: bs.position ?? 0,
-          title: songMap.get(bs.song_id || "")?.title,
-          artist: songMap.get(bs.song_id || "")?.artist,
-          youtube_id: songMap.get(bs.song_id || "")?.youtube_id,
-          youtube_url: songMap.get(bs.song_id || "")?.youtube_url,
-          thumbnail_url: songMap.get(bs.song_id || "")?.thumbnail_url,
-          duration: songMap.get(bs.song_id || "")?.duration,
-          status: bs.status ?? "queued",
-        }));
-
-        setRows((prevRows) => {
-          const existingIds = new Set(prevRows.map((row) => row.id));
-          const newIds = new Set(newRows.map((row) => row.id));
-          const kept = prevRows.filter((row) => newIds.has(row.id));
-          const added = newRows.filter((row) => !existingIds.has(row.id));
-          return [...kept, ...added];
-        });
-
-        if (isInitialLoad) {
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error("Error loading box data:", error);
-        if (isInitialLoad) {
-          setLoading(false);
-        }
-      }
-    },
-    [boxSlug, box]
-  );
-
   useEffect(() => {
-    setLoading(true);
-    fetchSongs(true);
-    const intervalId = setInterval(() => fetchSongs(false), 2000);
-    return () => clearInterval(intervalId);
-  }, [fetchSongs]);
+    fetchBoxSongs();
+  }, [fetchBoxSongs]);
+
+  // Prefetch media whenever the songs list changes
+  useEffect(() => {
+    const youtubeIds = songs
+      .map((song) => song.youtube_id)
+      .filter((youtube_id): youtube_id is string => Boolean(youtube_id));
+
+    if (youtubeIds.length > 0) {
+      prefetchMedia(youtubeIds);
+    }
+  }, [songs, prefetchMedia]);
 
   const addSong = useCallback(
     async (songData: {
@@ -141,20 +229,27 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
           position: rows.length,
           status: "queued",
         });
-        setRows((prev) => [
-          ...prev,
-          {
-            id: relation.id || "",
-            position: relation.position ?? 0,
-            title: song.title,
-            artist: song.artist,
-            youtube_id: song.youtube_id,
-            youtube_url: song.youtube_url,
-            thumbnail_url: song.thumbnail_url,
-            duration: song.duration,
-            status: relation.status ?? "queued",
-          },
-        ]);
+
+        const newRow: SongRow = {
+          id: relation.id || "",
+          position: relation.position ?? 0,
+          title: song.title,
+          artist: song.artist,
+          youtube_id: song.youtube_id,
+          youtube_url: song.youtube_url,
+          thumbnail_url: song.thumbnail_url,
+          duration: song.duration,
+          status: relation.status ?? "queued",
+        };
+
+        setRows((prev) => {
+          // Check if this song already exists to avoid duplicates
+          const existingSong = prev.find((row) => row.id === newRow.id);
+          if (existingSong) {
+            return prev; // Don't add duplicate
+          }
+          return [...prev, newRow];
+        });
       } catch (error) {
         console.error("Error adding YouTube song:", error);
         throw error;
@@ -177,6 +272,25 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  // Navigation functions for previous/next songs
+  const goToPrevious = useCallback(() => {
+    setCurrentSongIndex((prevIndex) => {
+      const newIndex = prevIndex - 1;
+      return newIndex >= 0 ? newIndex : prevIndex;
+    });
+  }, []);
+
+  const goToNext = useCallback(() => {
+    setCurrentSongIndex((prevIndex) => {
+      const newIndex = prevIndex + 1;
+      return newIndex < songs.length ? newIndex : prevIndex;
+    });
+  }, [songs.length]);
+
+  // Helper properties to check if navigation is available
+  const hasPrevious = currentSongIndex > 0;
+  const hasNext = currentSongIndex < songs.length - 1;
+
   return (
     <JukeboxContext.Provider
       value={{
@@ -186,10 +300,18 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
         loading,
         slug: boxSlug,
         shareUrl,
+        page,
+        setPage,
         addSong,
         updateStatus,
+        mediaMap,
+        getMediaUrl: (id) => mediaMap[id],
         currentSongIndex,
         setCurrentSongIndex,
+        goToPrevious,
+        goToNext,
+        hasPrevious,
+        hasNext,
       }}
     >
       {children}

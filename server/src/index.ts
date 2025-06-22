@@ -158,7 +158,7 @@ app.get("/api/youtube/audio", async (req, res) => {
     }
 
     // Check if the video is available
-    const isValid = await ytdl.validateURL(
+    const isValid = ytdl.validateURL(
       `https://www.youtube.com/watch?v=${videoId}`
     );
     if (!isValid) {
@@ -507,6 +507,65 @@ app.get("/api/songs", async (req, res, _next: NextFunction) => {
 
 /**
  * @openapi
+ * /api/songs/by-ids:
+ *   get:
+ *     tags:
+ *       - Songs
+ *     summary: Get songs by multiple IDs
+ *     parameters:
+ *       - in: query
+ *         name: ids
+ *         required: true
+ *         schema:
+ *           type: string
+ *           description: Comma-separated list of song IDs
+ *         example: "1,2,3"
+ *     responses:
+ *       200:
+ *         description: A list of songs matching the provided IDs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Song'
+ *       400:
+ *         description: Invalid or missing IDs parameter
+ */
+app.get("/api/songs/by-ids", async (req, res, _next: NextFunction) => {
+  try {
+    const idsParam = req.query.ids;
+
+    if (!idsParam || typeof idsParam !== "string") {
+      return void res.status(400).json({
+        error:
+          "Missing or invalid 'ids' parameter. Expected comma-separated list of song IDs.",
+      });
+    }
+
+    const ids = idsParam
+      .split(",")
+      .map((id) => id.trim())
+      .filter((id) => id.length > 0);
+
+    if (ids.length === 0) {
+      return void res.status(400).json({ error: "No valid IDs provided" });
+    }
+
+    const songs = await db
+      .selectFrom("songs")
+      .selectAll()
+      .where("id", "in", ids)
+      .execute();
+
+    res.json(songs);
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+/**
+ * @openapi
  * /api/songs/{id}:
  *   get:
  *     tags:
@@ -718,21 +777,70 @@ app.delete("/api/songs/:id", async (req, res, _next: NextFunction) => {
  *   get:
  *     tags:
  *       - BoxSongs
- *     summary: Get all box-song relationships
+ *     summary: Get all box-song relationships with pagination
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Maximum number of results to return
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Number of results to skip
  *     responses:
  *       200:
- *         description: A list of box-song relations
+ *         description: A paginated list of box-song relations
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/BoxSong'
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/BoxSong'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     limit:
+ *                       type: integer
+ *                     offset:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
  */
 app.get("/api/box_songs", async (req, res, _next: NextFunction) => {
   try {
-    const rels = await db.selectFrom("box_songs").selectAll().execute();
-    res.json(rels);
+    const limit = parseInt(req.query.limit as string) || 10;
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    const rels = await db
+      .selectFrom("box_songs")
+      .selectAll()
+      .orderBy("position", "asc")
+      .orderBy("id", "asc")
+      .limit(limit)
+      .offset(offset)
+      .execute();
+
+    const totalResult = await db
+      .selectFrom("box_songs")
+      .select(sql<number>`count(*)`.as("count"))
+      .executeTakeFirst();
+    const totalCount = totalResult?.count ?? 0;
+
+    res.json({
+      data: rels,
+      pagination: {
+        limit,
+        offset,
+        total: totalCount,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }

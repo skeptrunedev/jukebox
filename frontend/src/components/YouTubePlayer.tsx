@@ -1,12 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Play, Pause, SkipForward, SkipBack } from "lucide-react";
-import { getYouTubeAudioUrl } from "@/sdk";
 import { useJukebox } from "@/hooks/useJukeboxContext";
 
-export default function YouTubePlayer() {
-  const { songs, currentSongIndex, setCurrentSongIndex, updateStatus } =
+export const YouTubePlayer = () => {
+  const { songs, currentSongIndex, mediaMap, goToPrevious, goToNext } =
     useJukebox();
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -14,137 +13,123 @@ export default function YouTubePlayer() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const currentSong = songs[currentSongIndex];
+  const seekTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Memoize status updates to prevent unnecessary re-renders
-  const stableStatusUpdate = useCallback(
-    (songId: string, status: "queued" | "playing" | "played") => {
-      updateStatus(songId, status);
-    },
-    [updateStatus]
-  );
+  const currentSong = useMemo(() => {
+    return songs[currentSongIndex];
+  }, [songs, currentSongIndex]);
 
-  const handleNext = useCallback(() => {
-    if (currentSongIndex < songs.length - 1) {
-      if (currentSong) {
-        stableStatusUpdate(currentSong.id, "played");
-      }
-      const nextIndex = currentSongIndex + 1;
-      setCurrentSongIndex(nextIndex);
-
-      if (hasInteracted && isPlaying) {
-        setTimeout(() => {
-          const audio = audioRef.current;
-          audio?.play().catch(console.error);
-        }, 100);
-      }
-    }
-  }, [
-    currentSongIndex,
-    songs.length,
-    setCurrentSongIndex,
-    currentSong,
-    stableStatusUpdate,
-    hasInteracted,
-    isPlaying,
-  ]);
-
-  const handlePrevious = useCallback(() => {
-    if (currentSongIndex > 0) {
-      if (currentSong) {
-        stableStatusUpdate(currentSong.id, "played");
-      }
-      const prevIndex = currentSongIndex - 1;
-      setCurrentSongIndex(prevIndex);
-
-      if (hasInteracted && isPlaying) {
-        setTimeout(() => {
-          const audio = audioRef.current;
-          audio?.play().catch(console.error);
-        }, 100);
-      }
-    }
-  }, [
-    currentSongIndex,
-    setCurrentSongIndex,
-    currentSong,
-    stableStatusUpdate,
-    hasInteracted,
-    isPlaying,
-  ]);
-
-  // Initialize audio element when song changes
   useEffect(() => {
-    if (!currentSong?.youtube_id) return;
+    if (songs.length === 0) return;
 
+    const currentSong = songs[currentSongIndex];
+    if (!currentSong || !currentSong.youtube_id) return;
+
+    const audio = audioRef.current;
+    if (!audio) {
+      const newAudio = new Audio();
+      newAudio.crossOrigin = "anonymous";
+      audioRef.current = newAudio;
+    }
+
+    const mediaUrl = mediaMap[currentSong.youtube_id];
+    if (mediaUrl && audioRef.current) {
+      // Only update the src if it's different from the current src
+      if (audioRef.current.src !== mediaUrl) {
+        audioRef.current.src = mediaUrl;
+        setDuration(currentSong.duration ?? 0);
+        // setCurrentTime(0);
+        setIsPlaying(false);
+        setIsLoading(false);
+      }
+    } else {
+      console.warn("No media URL found for song:", currentSong.title);
+    }
+  }, [songs, currentSongIndex, mediaMap]);
+
+  // Audio event listeners effect
+  useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    setIsLoading(true);
-
-    // Set the audio source to the YouTube audio stream
-    const audioUrl = getYouTubeAudioUrl(currentSong.youtube_id);
-    audio.src = audioUrl;
-
-    // Set up event listeners
-    const handleLoadStart = () => setIsLoading(true);
-    const handleCanPlay = () => {
-      setIsLoading(false);
-      setDuration(audio.duration || 0);
+    const handleTimeUpdate = () => {
+      console.log("Time update:", audio.currentTime);
+      setCurrentTime(audio.currentTime);
     };
-    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const handlePlay = () => {
-      setIsPlaying(true);
-      stableStatusUpdate(currentSong.id, "playing");
-    };
-    const handlePause = () => setIsPlaying(false);
-    const handleEnded = () => {
-      setIsPlaying(false);
-      stableStatusUpdate(currentSong.id, "played");
-      if (hasInteracted && currentSongIndex < songs.length - 1) {
-        const nextIndex = currentSongIndex + 1;
-        setCurrentSongIndex(nextIndex);
-        setTimeout(() => {
-          const audio = audioRef.current;
-          audio?.play().catch(console.error);
-        }, 100);
+
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+      if (isNaN(audio.duration) || audio.duration === 0) {
+        console.warn("Invalid audio duration detected");
       }
     };
-    const handleError = (e: Event) => {
-      console.error("Audio playback error:", e);
+
+    const handlePlay = () => {
+      setIsPlaying(true);
       setIsLoading(false);
+    };
+
+    const handlePause = () => {
       setIsPlaying(false);
     };
 
-    audio.addEventListener("loadstart", handleLoadStart);
-    audio.addEventListener("canplay", handleCanPlay);
+    const handleEnded = () => {
+      setIsPlaying(false);
+      // Auto-advance to next song if available
+      if (currentSongIndex < songs.length - 1) {
+        goToNext();
+        setCurrentTime(0);
+      }
+    };
+
+    const handleLoadStart = () => {
+      setIsLoading(true);
+    };
+
+    const handleCanPlay = () => {
+      setIsLoading(false);
+    };
+
+    const handleError = () => {
+      setIsLoading(false);
+      setIsPlaying(false);
+      console.error("Audio playback error");
+    };
+
+    const handleSeeked = () => {
+      // Seek operation completed successfully
+      if (seekTimeoutRef.current) {
+        console.log("Seek completed successfully, clearing timeout");
+        clearTimeout(seekTimeoutRef.current);
+        seekTimeoutRef.current = null;
+      }
+      console.log("Seek completed successfully at:", audio.currentTime);
+    };
+
+    // Add event listeners
     audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
     audio.addEventListener("play", handlePlay);
     audio.addEventListener("pause", handlePause);
     audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("loadstart", handleLoadStart);
+    audio.addEventListener("canplay", handleCanPlay);
     audio.addEventListener("error", handleError);
+    audio.addEventListener("seeked", handleSeeked);
 
-    // Auto-play when ready - REMOVED to prevent autoplay issues
-    audio.load();
-    // Don't auto-play - let user interact first
-
+    // Cleanup function
     return () => {
-      audio.removeEventListener("loadstart", handleLoadStart);
-      audio.removeEventListener("canplay", handleCanPlay);
       audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       audio.removeEventListener("play", handlePlay);
       audio.removeEventListener("pause", handlePause);
       audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("loadstart", handleLoadStart);
+      audio.removeEventListener("canplay", handleCanPlay);
       audio.removeEventListener("error", handleError);
+      audio.removeEventListener("seeked", handleSeeked);
     };
-  }, [
-    currentSong,
-    stableStatusUpdate,
-    currentSongIndex,
-    songs.length,
-    setCurrentSongIndex,
-    hasInteracted,
-  ]);
+  }, [currentSongIndex, songs.length, goToNext]);
 
   const handlePlayPause = async () => {
     const audio = audioRef.current;
@@ -152,10 +137,12 @@ export default function YouTubePlayer() {
 
     if (isPlaying) {
       audio.pause();
+      setIsPlaying(false);
     } else {
       try {
         setHasInteracted(true);
         await audio.play();
+        setIsPlaying(true);
       } catch (error) {
         console.error("Playback failed:", error);
         // The error will be handled by the audio error event listener
@@ -167,13 +154,47 @@ export default function YouTubePlayer() {
     const audio = audioRef.current;
     if (!audio || duration === 0) return;
 
+    // Prevent seeking if audio is not ready
+    if (audio.readyState < 2) return; // HAVE_CURRENT_DATA or higher
+
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
-    const percentage = clickX / rect.width;
+    const percentage = Math.max(0, Math.min(1, clickX / rect.width)); // Clamp between 0 and 1
     const newTime = percentage * duration;
 
-    audio.currentTime = newTime;
-    setCurrentTime(newTime);
+    // Ensure the new time is within valid bounds
+    const clampedTime = Math.max(0, Math.min(duration, newTime));
+
+    // Clear any existing seek timeout
+    if (seekTimeoutRef.current) {
+      clearTimeout(seekTimeoutRef.current);
+    }
+
+    setCurrentTime(clampedTime); // Update UI immediately
+
+    try {
+      audio.currentTime = clampedTime;
+      console.log(
+        "Seeking to:",
+        clampedTime,
+        "seconds",
+        "of duration:",
+        duration
+      );
+
+      // Wait for the seek to complete or timeout after a reasonable time
+      seekTimeoutRef.current = setTimeout(() => {
+        // Verify the seek was successful, if not, update UI to actual position
+        if (Math.abs(audio.currentTime - clampedTime) > 1) {
+          console.warn("Seek may have failed, actual time:", audio.currentTime);
+          setCurrentTime(audio.currentTime);
+        }
+      }, 500); // 500ms timeout for seek operation
+    } catch (error) {
+      console.error("Seek failed:", error);
+      // Reset to actual audio position on error
+      setCurrentTime(audio.currentTime);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -182,7 +203,7 @@ export default function YouTubePlayer() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  if (!currentSong || !currentSong.youtube_id) {
+  if (!currentSong) {
     return (
       <Card className="bg-white text-foreground">
         <CardContent className="p-6">
@@ -214,8 +235,18 @@ export default function YouTubePlayer() {
               />
             )}
             <div className="flex-1">
-              <h3 className="font-semibold text-lg">{currentSong.title}</h3>
-              <p className="text-gray-600">{currentSong.artist}</p>
+              <h3
+                className="font-semibold text-lg"
+                dangerouslySetInnerHTML={{
+                  __html: currentSong.title ?? "Unknown Title",
+                }}
+              />
+              <p
+                className="text-gray-600"
+                dangerouslySetInnerHTML={{
+                  __html: currentSong.artist ?? "Unknown Artist",
+                }}
+              />
             </div>
           </div>
 
@@ -244,7 +275,7 @@ export default function YouTubePlayer() {
             <Button
               variant="neutral"
               size="sm"
-              onClick={handlePrevious}
+              onClick={goToPrevious}
               disabled={currentSongIndex === 0}
             >
               <SkipBack className="h-4 w-4" />
@@ -267,7 +298,7 @@ export default function YouTubePlayer() {
             <Button
               variant="neutral"
               size="sm"
-              onClick={handleNext}
+              onClick={goToNext}
               disabled={currentSongIndex === songs.length - 1}
             >
               <SkipForward className="h-4 w-4" />
@@ -292,4 +323,6 @@ export default function YouTubePlayer() {
       </CardContent>
     </Card>
   );
-}
+};
+
+export default YouTubePlayer;

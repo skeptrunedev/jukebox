@@ -1,4 +1,4 @@
-import type { ReactNode, Key } from 'react'
+import type { ReactNode, Key } from "react";
 import {
   Table,
   TableHeader,
@@ -6,12 +6,12 @@ import {
   TableHead,
   TableBody,
   TableCell,
-} from '@/components/ui/table'
+} from "@/components/ui/table";
 
 /** Definition of a column: header and cell renderer */
 export interface Column<Row> {
-  header: ReactNode
-  cell: (row: Row, index: number) => ReactNode
+  header: ReactNode;
+  cell: (row: Row, index: number) => ReactNode;
 }
 
 /**
@@ -23,9 +23,9 @@ export function SongTable<Row>({
   columns,
   getRowProps,
 }: {
-  rows: Row[]
-  columns: Column<Row>[]
-  getRowProps?: (row: Row, index: number) => { key: Key; className?: string }
+  rows: Row[];
+  columns: Column<Row>[];
+  getRowProps?: (row: Row, index: number) => { key: Key; className?: string };
 }) {
   return (
     <Table>
@@ -38,16 +38,16 @@ export function SongTable<Row>({
       </TableHeader>
       <TableBody>
         {rows.map((row, rowIndex) => {
-          const props = getRowProps?.(row, rowIndex) ?? { key: rowIndex }
+          const props = getRowProps?.(row, rowIndex) ?? { key: rowIndex };
           return (
             <TableRow key={props.key} className={props.className}>
               {columns.map((col, colIndex) => (
                 <TableCell key={colIndex}>{col.cell(row, rowIndex)}</TableCell>
               ))}
             </TableRow>
-          )
+          );
         })}
       </TableBody>
     </Table>
-  )
+  );
 }
