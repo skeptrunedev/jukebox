@@ -27,6 +27,8 @@ console.error = (...args: unknown[]) => {
  *           type: string
  *         slug:
  *           type: string
+ *         user_id:
+ *           type: string
  *     Song:
  *       type: object
  *       properties:
@@ -58,6 +60,8 @@ console.error = (...args: unknown[]) => {
  *           type: string
  *         song_id:
  *           type: string
+ *         user_id:
+ *           type: string
  *         position:
  *           type: integer
  *         status:
@@ -79,10 +83,10 @@ console.error = (...args: unknown[]) => {
 import express, { NextFunction } from "express";
 import cors from "cors";
 import db from "./db";
+import http from "http";
 import { randomUUID } from "crypto";
 import { sql } from "kysely";
 import { setupSwagger } from "./swagger";
-import http from "http";
 import ytdl from "@distube/ytdl-core";
 
 const app = express();
@@ -591,9 +595,11 @@ app.get("/api/boxes/:id", async (req, res, _next: NextFunction) => {
  *                 type: string
  *               slug:
  *                 type: string
+ *               user_id:
+ *                 type: string
  *             required:
  *               - name
- *               - slug
+ *               - user_id
  *     responses:
  *       201:
  *         description: Created box
@@ -607,7 +613,16 @@ app.get("/api/boxes/:id", async (req, res, _next: NextFunction) => {
 app.post("/api/boxes", async (req, res, _next: NextFunction) => {
   try {
     const id = randomUUID();
-    const { name, slug: providedSlug } = req.body;
+    const { name, slug: providedSlug, user_id } = req.body;
+    // Validate that the user exists
+    const user = await db
+      .selectFrom("users")
+      .select("id")
+      .where("id", "=", user_id)
+      .executeTakeFirst();
+    if (!user) {
+      return void res.status(400).json({ error: "User not found" });
+    }
     // Generate slug from name if not provided
     let slug = (providedSlug || name)
       .toLowerCase()
@@ -623,14 +638,13 @@ app.post("/api/boxes", async (req, res, _next: NextFunction) => {
         .where("slug", "=", uniqueSlug)
         .executeTakeFirst()
     ) {
-      // Append random 4-digit number
       const rand = Math.floor(1000 + Math.random() * 9000);
       uniqueSlug = `${slug}-${rand}`;
     }
     slug = uniqueSlug;
 
-    await db.insertInto("boxes").values({ id, name, slug }).execute();
-    res.status(201).json({ id, name, slug });
+    await db.insertInto("boxes").values({ id, name, slug, user_id }).execute();
+    res.status(201).json({ id, name, slug, user_id });
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
@@ -642,7 +656,7 @@ app.post("/api/boxes", async (req, res, _next: NextFunction) => {
  *   put:
  *     tags:
  *       - Boxes
- *     summary: Update a box's name
+ *     summary: Update a box's name or user
  *     parameters:
  *       - in: path
  *         name: id
@@ -658,8 +672,8 @@ app.post("/api/boxes", async (req, res, _next: NextFunction) => {
  *             properties:
  *               name:
  *                 type: string
- *             required:
- *               - name
+ *               user_id:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Updated box
@@ -669,13 +683,29 @@ app.post("/api/boxes", async (req, res, _next: NextFunction) => {
  *               $ref: '#/components/schemas/Box'
  *       404:
  *         description: Box not found
+ *       400:
+ *         description: User not found
  */
 app.put("/api/boxes/:id", async (req, res, _next: NextFunction) => {
   try {
-    const { name } = req.body;
+    const { name, user_id } = req.body;
+    const updates: Record<string, unknown> = {};
+    if (name !== undefined) updates.name = name;
+    if (user_id !== undefined) {
+      const user = await db
+        .selectFrom("users")
+        .select("id")
+        .where("id", "=", user_id)
+        .executeTakeFirst();
+      if (!user) {
+        return void res.status(400).json({ error: "User not found" });
+      }
+      updates.user_id = user_id;
+    }
+
     const updatedRows = await db
       .updateTable("boxes")
-      .set({ name })
+      .set(updates)
       .where("id", "=", req.params.id)
       .execute();
     if (!updatedRows.length) {
@@ -1152,6 +1182,8 @@ app.get("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
  *                 description: Box ID or slug
  *               song_id:
  *                 type: string
+ *               user_id:
+ *                 type: string
  *               position:
  *                 type: integer
  *               status:
@@ -1163,6 +1195,7 @@ app.get("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
  *             required:
  *               - box_id
  *               - song_id
+ *               - user_id
  *               - position
  *     responses:
  *       201:
@@ -1175,7 +1208,7 @@ app.get("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
 app.post("/api/box_songs", async (req, res, _next: NextFunction) => {
   try {
     const id = randomUUID();
-    let { box_id, song_id, position, status } = req.body;
+    let { box_id, song_id, user_id, position, status } = req.body;
 
     // Validate that the box exists (accepting either box ID or slug)
     const box = await db
@@ -1199,9 +1232,19 @@ app.post("/api/box_songs", async (req, res, _next: NextFunction) => {
       return void res.status(400).json({ error: "Song not found" });
     }
 
+    // Validate that the user exists
+    const user = await db
+      .selectFrom("users")
+      .select("id")
+      .where("id", "=", user_id)
+      .executeTakeFirst();
+    if (!user) {
+      return void res.status(400).json({ error: "User not found" });
+    }
+
     await db
       .insertInto("box_songs")
-      .values({ id, box_id, song_id, position, status })
+      .values({ id, box_id, song_id, user_id, position, status })
       .execute();
     const rel = await db
       .selectFrom("box_songs")
@@ -1238,6 +1281,8 @@ app.post("/api/box_songs", async (req, res, _next: NextFunction) => {
  *                 type: string
  *               song_id:
  *                 type: string
+ *               user_id:
+ *                 type: string
  *               position:
  *                 type: integer
  *               status:
@@ -1258,7 +1303,7 @@ app.post("/api/box_songs", async (req, res, _next: NextFunction) => {
  */
 app.put("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
   try {
-    const { box_id, song_id, position, status } = req.body;
+    const { box_id, song_id, user_id, position, status } = req.body;
     const updates: Record<string, unknown> = {};
 
     // Validate box_id if provided
@@ -1293,6 +1338,19 @@ app.put("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
         return void res.status(400).json({ error: "Invalid status" });
       }
       updates.status = status;
+    }
+
+    // Validate user_id if provided
+    if (user_id !== undefined) {
+      const user = await db
+        .selectFrom("users")
+        .select("id")
+        .where("id", "=", user_id)
+        .executeTakeFirst();
+      if (!user) {
+        return void res.status(400).json({ error: "User not found" });
+      }
+      updates.user_id = user_id;
     }
 
     const updatedRows = await db

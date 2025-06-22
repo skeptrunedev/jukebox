@@ -174,3 +174,5 @@ dist/
 # pnpm-lock.yaml
 
 *.sqlite3
+
+dist

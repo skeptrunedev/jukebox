@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import request from "supertest";
 import app from "../../src/index";
+import request from "supertest";
 import { Knex } from "knex";
 import { migrateDb } from "../helpers/db";
 import "mocha";

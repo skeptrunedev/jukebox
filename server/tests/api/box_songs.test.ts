@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import request from "supertest";
 import app from "../../src/index";
+import request from "supertest";
 import { Knex } from "knex";
 import { migrateDb } from "../helpers/db";
 import "mocha";
@@ -17,13 +17,18 @@ describe("BoxSongs API", () => {
   let boxId: string;
   let boxSlug: string;
   let songId: string;
+  let userId: string;
   let relId: string;
   let slugRelId: string;
 
   before(async () => {
+    const userRes = await request(app)
+      .post("/api/users")
+      .send({ fingerprint: "fp-test", username: "testuser" });
+    userId = userRes.body.id;
     const boxRes = await request(app)
       .post("/api/boxes")
-      .send({ name: "BoxForRel" });
+      .send({ name: "BoxForRel", user_id: userId });
     boxId = boxRes.body.id;
     boxSlug = boxRes.body.slug;
     const songRes = await request(app)
@@ -36,7 +41,7 @@ describe("BoxSongs API", () => {
     await request(app).delete(`/api/box_songs/${relId}`);
     const res = await request(app)
       .post("/api/box_songs")
-      .send({ box_id: boxId, song_id: songId, position: 1 });
+      .send({ box_id: boxId, song_id: songId, user_id: userId, position: 1 });
     expect(res.status).to.equal(201);
     expect(res.body).to.have.property("id");
     relId = res.body.id;
@@ -46,7 +51,7 @@ describe("BoxSongs API", () => {
     await request(app).delete(`/api/box_songs/${relId}`);
     const res = await request(app)
       .post("/api/box_songs")
-      .send({ box_id: boxSlug, song_id: songId, position: 1 });
+      .send({ box_id: boxSlug, song_id: songId, user_id: userId, position: 1 });
     if (res.status !== 201) {
       console.error("Error response:", res.body);
     }

@@ -3,6 +3,7 @@ export interface Database {
     id: string;
     name: string;
     slug: string;
+    user_id: string;
   };
   songs: {
     id: string;
@@ -17,6 +18,7 @@ export interface Database {
     id: string;
     box_id: string;
     song_id: string;
+    user_id: string;
     position: number;
     status: 'queued' | 'playing' | 'played';
   };
