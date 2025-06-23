@@ -1275,14 +1275,6 @@ app.post("/api/box_songs", async (req, res, _next: NextFunction) => {
       return void res.status(400).json({ error: "User not found" });
     }
 
-    console.log("Creating box_song relation", {
-      id,
-      box_id,
-      song_id,
-      user_id,
-      status,
-    });
-
     // Get all queued songs in this box ordered by position
     const queuedSongs = await db
       .selectFrom("box_songs")
