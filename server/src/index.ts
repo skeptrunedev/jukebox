@@ -88,9 +88,30 @@ import { randomUUID } from "crypto";
 import { sql } from "kysely";
 import { setupSwagger } from "./swagger";
 import ytdl from "@distube/ytdl-core";
+import fetch from "node-fetch";
+import { HttpsProxyAgent } from "https-proxy-agent";
 
 const app = express();
 const port = process.env.PORT || 3001;
+
+// Configure proxy for YouTube requests
+const proxyUsername = process.env.PROXY_USERNAME;
+const proxyPassword = process.env.PROXY_PASSWORD;
+const proxyCountry = process.env.PROXY_COUNTRY || "US";
+const proxyHost = process.env.PROXY_HOST || "pr.oxylabs.io:7777";
+
+if (!proxyUsername || !proxyPassword) {
+  console.warn(
+    "Warning: PROXY_USERNAME and PROXY_PASSWORD environment variables are not set. Proxy functionality may not work."
+  );
+}
+
+const proxyAgent =
+  proxyUsername && proxyPassword
+    ? new HttpsProxyAgent(
+        `http://${proxyUsername}-cc-${proxyCountry}:${proxyPassword}@${proxyHost}`
+      )
+    : undefined;
 
 app.use(
   cors({
@@ -443,7 +464,22 @@ app.get("/api/youtube/audio", async (req, res) => {
         .json({ error: "Video not found or unavailable" });
     }
 
-    const info = await ytdl.getInfo(videoId);
+    const requestOptions: any = {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        Accept: "audio/webm, audio/mpeg",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+    };
+
+    if (proxyAgent) {
+      requestOptions.httpsAgent = proxyAgent;
+    }
+
+    const info = await ytdl.getInfo(videoId, {
+      requestOptions,
+    });
     const format = ytdl.chooseFormat(info.formats, {
       quality: "highestaudio",
       filter: "audioonly",
@@ -467,18 +503,40 @@ app.get("/api/youtube/audio", async (req, res) => {
       res.setHeader("Content-Length", format.contentLength);
     }
 
+    const streamRequestOptions: any = {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        Accept: "audio/webm, audio/mpeg",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Range": "bytes",
+      },
+    };
+
+    if (proxyAgent) {
+      streamRequestOptions.httpsAgent = proxyAgent;
+    }
+
     const stream = ytdl(videoId, {
       filter: "audioonly",
       quality: "highestaudio",
-      requestOptions: {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-          Accept: "audio/webm, audio/mpeg",
-          "Accept-Language": "en-US,en;q=0.9",
-          "Accept-Range": "bytes",
-        },
-      },
+      requestOptions: streamRequestOptions,
+    });
+
+    const streamTimeout = setTimeout(() => {
+      console.log("Stream timeout reached (5 minutes), destroying stream");
+      stream.destroy();
+      if (!res.headersSent) {
+        res.status(408).json({ error: "Stream timeout" });
+      }
+    }, 5 * 60 * 1000);
+
+    stream.on("end", () => {
+      clearTimeout(streamTimeout);
+    });
+
+    stream.on("close", () => {
+      clearTimeout(streamTimeout);
     });
 
     stream.on("error", (error) => {
@@ -1594,8 +1652,11 @@ app.get("/api/youtube/search", async (req, res, _next: NextFunction) => {
       `maxResults=${maxResults}&` +
       `key=${API_KEY}`;
 
-    const searchResponse = await fetch(searchUrl);
-    const searchData = await searchResponse.json();
+    const searchResponse = await fetch(
+      searchUrl,
+      proxyAgent ? { agent: proxyAgent } : {}
+    );
+    const searchData = (await searchResponse.json()) as any;
 
     if (!searchResponse.ok) {
       throw new Error(searchData.error?.message || "YouTube API error");
@@ -1611,8 +1672,11 @@ app.get("/api/youtube/search", async (req, res, _next: NextFunction) => {
       `id=${videoIds}&` +
       `key=${API_KEY}`;
 
-    const detailsResponse = await fetch(detailsUrl);
-    const detailsData = await detailsResponse.json();
+    const detailsResponse = await fetch(
+      detailsUrl,
+      proxyAgent ? { agent: proxyAgent } : {}
+    );
+    const detailsData = (await detailsResponse.json()) as any;
 
     if (!detailsResponse.ok) {
       throw new Error(detailsData.error?.message || "YouTube API error");
@@ -1639,6 +1703,23 @@ app.get("/api/youtube/search", async (req, res, _next: NextFunction) => {
   } catch (error) {
     console.error("YouTube search error:", error);
     res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Test proxy connection
+app.get("/api/test-proxy", async (req, res) => {
+  try {
+    const response = await fetch("https://ip.oxylabs.io/location", {
+      method: "get",
+      ...(proxyAgent && { agent: proxyAgent }),
+    });
+    const data = await response.text();
+    res.json({ proxyTest: data });
+  } catch (error) {
+    console.error("Proxy test error:", error);
+    res
+      .status(500)
+      .json({ error: "Proxy test failed", details: (error as Error).message });
   }
 });
 
