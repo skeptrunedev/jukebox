@@ -36,7 +36,7 @@ export default function SharePage() {
               <SongTable
                 rows={rows}
                 columns={[
-                  { header: "#", cell: (_, i) => i + 1 },
+                  { header: "#", cell: (r) => r.position },
                   { header: "Title", cell: (r) => r.title },
                   { header: "Artist", cell: (r) => r.artist },
                   {

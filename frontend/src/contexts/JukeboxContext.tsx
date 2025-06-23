@@ -201,6 +201,14 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
         // Use helper function for deep comparison
         return areSongRowsEqual(prevRows, newSongRows) ? prevRows : newSongRows;
       });
+
+      // set the current song index to the first playing song or the first queued song
+      const playingIndex = newSongRows.findIndex(
+        (row) => row.status === "playing" || row.status === "queued"
+      );
+      if (playingIndex !== -1 && playingIndex) {
+        setCurrentSongIndex(playingIndex);
+      }
     } catch (error) {
       console.error("Error loading box songs:", error);
       setRows((prevRows) => {
@@ -302,7 +310,7 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
           box_id: boxSlug,
           song_id: song.id || "",
           user_id: user.id,
-          position: rows.length,
+          position: rows.length + 1,
           status: "queued",
         });
 
@@ -368,18 +376,38 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
 
   // Navigation functions for previous/next songs
   const goToPrevious = useCallback(() => {
+    const currentSong = songs[currentSongIndex];
+    if (currentSong) {
+      try {
+        updateBoxSong(currentSong.id, {
+          status: "played",
+        });
+      } catch (error) {
+        console.error("Failed to update song status to played:", error);
+      }
+    }
     setCurrentSongIndex((prevIndex) => {
       const newIndex = prevIndex - 1;
       return newIndex >= 0 ? newIndex : prevIndex;
     });
-  }, []);
+  }, [songs, currentSongIndex]);
 
   const goToNext = useCallback(() => {
+    const currentSong = songs[currentSongIndex];
+    if (currentSong) {
+      try {
+        updateBoxSong(currentSong.id, {
+          status: "played",
+        });
+      } catch (error) {
+        console.error("Failed to update song status to played:", error);
+      }
+    }
     setCurrentSongIndex((prevIndex) => {
       const newIndex = prevIndex + 1;
       return newIndex < songs.length ? newIndex : prevIndex;
     });
-  }, [songs.length]);
+  }, [currentSongIndex, songs]);
 
   // Helper properties to check if navigation is available
   const hasPrevious = currentSongIndex > 0;

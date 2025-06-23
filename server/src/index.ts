@@ -1219,19 +1219,17 @@ app.get("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
  *                 type: string
  *               user_id:
  *                 type: string
- *               position:
- *                 type: integer
  *               status:
  *                 type: string
  *                 enum:
  *                   - queued
  *                   - playing
  *                   - played
+ *                 default: queued
  *             required:
  *               - box_id
  *               - song_id
  *               - user_id
- *               - position
  *     responses:
  *       201:
  *         description: Created box-song relation
@@ -1243,7 +1241,7 @@ app.get("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
 app.post("/api/box_songs", async (req, res, _next: NextFunction) => {
   try {
     const id = randomUUID();
-    let { box_id, song_id, user_id, position, status } = req.body;
+    let { box_id, song_id, user_id, status = "queued" } = req.body;
 
     // Validate that the box exists (accepting either box ID or slug)
     const box = await db
@@ -1277,10 +1275,53 @@ app.post("/api/box_songs", async (req, res, _next: NextFunction) => {
       return void res.status(400).json({ error: "User not found" });
     }
 
+    console.log("Creating box_song relation", {
+      id,
+      box_id,
+      song_id,
+      user_id,
+      status,
+    });
+
+    // Get all queued songs in this box ordered by position
+    const queuedSongs = await db
+      .selectFrom("box_songs")
+      .selectAll()
+      .where("box_id", "=", box_id)
+      .where("status", "=", "queued")
+      .orderBy("position", "asc")
+      .execute();
+
+    let insertPosition: number;
+
+    if (queuedSongs.length === 0) {
+      // First song in queue
+      insertPosition = 1;
+    } else {
+      // Find the best position using round-robin fairness
+      insertPosition = findFairPosition(queuedSongs, user_id);
+    }
+
+    // Shift positions of songs that come after the insert position
+    await db
+      .updateTable("box_songs")
+      .set({ position: sql`position + 1` })
+      .where("box_id", "=", box_id)
+      .where("position", ">=", insertPosition)
+      .execute();
+
     await db
       .insertInto("box_songs")
-      .values({ id, box_id, song_id, user_id, position, status })
+      .values({
+        id,
+        box_id,
+        song_id,
+        user_id,
+        position: insertPosition,
+        status,
+      })
       .execute();
+
     const rel = await db
       .selectFrom("box_songs")
       .selectAll()
@@ -1288,9 +1329,55 @@ app.post("/api/box_songs", async (req, res, _next: NextFunction) => {
       .executeTakeFirst();
     res.status(201).json(rel);
   } catch (error) {
+    console.error("Error creating box_song relation:", error);
     res.status(500).json({ error: (error as Error).message });
   }
 });
+
+/**
+ * Find the fairest position to insert a new song using round-robin logic
+ */
+function findFairPosition(queuedSongs: any[], newUserId: string): number {
+  if (queuedSongs.length === 0) return 1;
+
+  // Look for the first position where we can insert without violating fairness
+  for (let i = 0; i < queuedSongs.length; i++) {
+    const currentSong = queuedSongs[i];
+    const nextSong = queuedSongs[i + 1];
+
+    // If there's no next song, we can add at the end
+    if (!nextSong) {
+      return currentSong.position + 1;
+    }
+
+    // If this is the same user, skip to avoid putting same user consecutively
+    if (currentSong.user_id === newUserId) {
+      continue;
+    }
+
+    // If the current and next songs are from the same user (not the new user),
+    // we should insert between them to break up their consecutive songs
+    if (
+      currentSong.user_id === nextSong.user_id &&
+      currentSong.user_id !== newUserId
+    ) {
+      return currentSong.position + 1;
+    }
+
+    // If we're at a transition between different users and neither is the new user,
+    // this is a good spot to maintain round-robin fairness
+    if (
+      currentSong.user_id !== nextSong.user_id &&
+      currentSong.user_id !== newUserId &&
+      nextSong.user_id !== newUserId
+    ) {
+      return nextSong.position;
+    }
+  }
+
+  // If we can't find a fair spot in the middle, add to the end
+  return queuedSongs[queuedSongs.length - 1].position + 1;
+}
 
 /**
  * @openapi

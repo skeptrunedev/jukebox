@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Play, Pause, SkipForward, SkipBack } from "lucide-react";
 import { useJukebox } from "@/hooks/useJukeboxContext";
+import { updateBoxSong } from "@/sdk";
 
 export const YouTubePlayer = () => {
   const { songs, currentSongIndex, mediaMap, goToPrevious, goToNext } =
@@ -67,17 +68,42 @@ export const YouTubePlayer = () => {
       }
     };
 
-    const handlePlay = () => {
+    const handlePlay = async () => {
       setIsPlaying(true);
       setIsLoading(false);
+
+      // Update status to "playing" when song starts
+      if (currentSong?.id) {
+        try {
+          await updateBoxSong(currentSong.id, {
+            ...currentSong,
+            status: "playing",
+          });
+        } catch (error) {
+          console.error("Failed to update song status to playing:", error);
+        }
+      }
     };
 
     const handlePause = () => {
       setIsPlaying(false);
     };
 
-    const handleEnded = () => {
+    const handleEnded = async () => {
       setIsPlaying(false);
+
+      // Mark current song as "played" when it ends
+      if (currentSong?.id) {
+        try {
+          await updateBoxSong(currentSong.id, {
+            ...currentSong,
+            status: "played",
+          });
+        } catch (error) {
+          console.error("Failed to update song status to played:", error);
+        }
+      }
+
       // Auto-advance to next song if available
       if (currentSongIndex < songs.length - 1) {
         goToNext();
@@ -126,7 +152,7 @@ export const YouTubePlayer = () => {
       audio.removeEventListener("canplay", handleCanPlay);
       audio.removeEventListener("error", handleError);
     };
-  }, [currentSongIndex, songs.length, goToNext, hasInteracted]);
+  }, [currentSongIndex, songs.length, goToNext, hasInteracted, currentSong]);
 
   const handlePlayPause = async () => {
     const audio = audioRef.current;
@@ -145,6 +171,14 @@ export const YouTubePlayer = () => {
         // The error will be handled by the audio error event listener
       }
     }
+  };
+
+  const handlePrevious = async () => {
+    goToPrevious();
+  };
+
+  const handleNext = async () => {
+    goToNext();
   };
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -274,7 +308,7 @@ export const YouTubePlayer = () => {
             <Button
               variant="neutral"
               size="sm"
-              onClick={goToPrevious}
+              onClick={handlePrevious}
               disabled={currentSongIndex === 0}
             >
               <SkipBack className="h-4 w-4" />
@@ -297,7 +331,7 @@ export const YouTubePlayer = () => {
             <Button
               variant="neutral"
               size="sm"
-              onClick={goToNext}
+              onClick={handleNext}
               disabled={currentSongIndex === songs.length - 1}
             >
               <SkipForward className="h-4 w-4" />
