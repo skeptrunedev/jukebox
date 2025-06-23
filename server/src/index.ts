@@ -87,7 +87,7 @@ import http from "http";
 import { randomUUID } from "crypto";
 import { sql } from "kysely";
 import { setupSwagger } from "./swagger";
-import ytdl from "@distube/ytdl-core";
+import { Innertube } from "youtubei.js";
 import fetch from "node-fetch";
 import { HttpsProxyAgent } from "https-proxy-agent";
 
@@ -109,9 +109,23 @@ if (!proxyUsername || !proxyPassword) {
 const proxyAgent =
   proxyUsername && proxyPassword
     ? new HttpsProxyAgent(
-        `http://${proxyUsername}-cc-${proxyCountry}:${proxyPassword}@${proxyHost}`
+        `http://${encodeURIComponent(
+          proxyUsername
+        )}-cc-${proxyCountry}:${encodeURIComponent(proxyPassword)}@${proxyHost}`
       )
     : undefined;
+
+// Create a singleton YouTube instance to avoid repeated initialization
+let youtubeInstance: any = null;
+const getYouTubeInstance = async () => {
+  if (!youtubeInstance) {
+    youtubeInstance = await Innertube.create({
+      visitor_data: undefined,
+      enable_session_cache: true,
+    });
+  }
+  return youtubeInstance;
+};
 
 app.use(
   cors({
@@ -449,108 +463,205 @@ app.get("/api/youtube/audio", async (req, res) => {
   }
 
   try {
-    // Validate the video ID format
-    if (!ytdl.validateID(videoId)) {
+    // Validate the video ID format (basic regex check)
+    const videoIdRegex = /^[a-zA-Z0-9_-]{11}$/;
+    if (!videoIdRegex.test(videoId)) {
       return void res.status(400).json({ error: "Invalid YouTube video ID" });
     }
 
-    // Check if the video is available
-    const isValid = ytdl.validateURL(
-      `https://www.youtube.com/watch?v=${videoId}`
-    );
-    if (!isValid) {
-      return void res
-        .status(404)
-        .json({ error: "Video not found or unavailable" });
-    }
+    // Initialize Innertube with better configuration
+    const youtube = await getYouTubeInstance();
 
-    const requestOptions: any = {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        Accept: "audio/webm, audio/mpeg",
-        "Accept-Language": "en-US,en;q=0.9",
-      },
-    };
+    let info;
+    let audioFormat;
+    let stream;
 
-    if (proxyAgent) {
-      requestOptions.httpsAgent = proxyAgent;
-    }
+    try {
+      // Get video info
+      info = await youtube.getInfo(videoId);
 
-    const info = await ytdl.getInfo(videoId, {
-      requestOptions,
-    });
-    const format = ytdl.chooseFormat(info.formats, {
-      quality: "highestaudio",
-      filter: "audioonly",
-    });
-
-    if (!format || !format.mimeType) {
-      return void res
-        .status(500)
-        .json({ error: "No suitable audio format found" });
-    }
-
-    const mimeType = format.mimeType.split(";")[0];
-    res.setHeader("Content-Type", mimeType);
-    res.setHeader("Accept-Ranges", "bytes");
-    res.setHeader("Content-Disposition", `inline; filename="${videoId}.webm"`);
-    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-    res.setHeader("Pragma", "no-cache");
-    res.setHeader("Expires", "0");
-    res.setHeader("X-Content-Type-Options", "nosniff");
-    if (format.contentLength) {
-      res.setHeader("Content-Length", format.contentLength);
-    }
-
-    const streamRequestOptions: any = {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        Accept: "audio/webm, audio/mpeg",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Range": "bytes",
-      },
-    };
-
-    if (proxyAgent) {
-      streamRequestOptions.httpsAgent = proxyAgent;
-    }
-
-    const stream = ytdl(videoId, {
-      filter: "audioonly",
-      quality: "highestaudio",
-      requestOptions: streamRequestOptions,
-    });
-
-    const streamTimeout = setTimeout(() => {
-      console.log("Stream timeout reached (5 minutes), destroying stream");
-      stream.destroy();
-      if (!res.headersSent) {
-        res.status(408).json({ error: "Stream timeout" });
+      // Check if video is available
+      if (info.basic_info.is_private || info.basic_info.is_live_content) {
+        return void res
+          .status(404)
+          .json({ error: "Video not found or unavailable" });
       }
-    }, 5 * 60 * 1000);
 
-    stream.on("end", () => {
-      clearTimeout(streamTimeout);
-    });
+      // Try to get the best audio format with fallback options
+      audioFormat = info.chooseFormat({
+        type: "audio",
+        quality: "best",
+        format: "any",
+      });
 
-    stream.on("close", () => {
-      clearTimeout(streamTimeout);
-    });
-
-    stream.on("error", (error) => {
-      console.error("Stream error:", error);
-      if (!res.headersSent) {
-        res.status(500).json({ error: "Stream error occurred" });
+      if (!audioFormat) {
+        // Try alternative format selection
+        audioFormat = info.streaming_data?.adaptive_formats?.find(
+          (format: any) => format.mime_type?.includes("audio")
+        );
       }
-    });
 
-    stream.pipe(res);
-  } catch (error) {
+      if (!audioFormat) {
+        return void res
+          .status(500)
+          .json({ error: "No suitable audio format found" });
+      }
+
+      // Set response headers
+      const mimeType = audioFormat.mime_type?.split(";")[0] || "audio/webm";
+      res.setHeader("Content-Type", mimeType);
+      res.setHeader("Accept-Ranges", "bytes");
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename="${videoId}.webm"`
+      );
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+
+      if (audioFormat.content_length) {
+        res.setHeader("Content-Length", audioFormat.content_length);
+      }
+
+      // Try to create download stream with retries
+      let retryCount = 0;
+      const maxRetries = 3;
+
+      while (retryCount < maxRetries) {
+        try {
+          stream = await youtube.download(videoId, {
+            type: "audio",
+            quality: "best",
+            format: "any",
+          });
+          break; // Success, exit retry loop
+        } catch (downloadError: any) {
+          console.error(
+            `Download attempt ${retryCount + 1} failed:`,
+            downloadError.message
+          );
+          retryCount++;
+
+          if (retryCount >= maxRetries) {
+            // If all retries failed, try alternative approach
+            if (audioFormat.url) {
+              console.log("Trying direct URL fetch as fallback");
+              const response = await fetch(audioFormat.url, {
+                ...(proxyAgent && { agent: proxyAgent }),
+                headers: {
+                  "User-Agent":
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                  Accept: "audio/webm,audio/ogg,audio/*,*/*;q=0.9",
+                  "Accept-Language": "en-US,en;q=0.9",
+                  Range: "bytes=0-",
+                },
+              });
+              if (!response.ok) {
+                throw new Error(
+                  `HTTP ${response.status}: ${response.statusText}`
+                );
+              }
+
+              // Stream the response directly
+              const nodeStream = response.body;
+              if (nodeStream) {
+                nodeStream.pipe(res);
+                return;
+              }
+            }
+            throw downloadError;
+          }
+
+          // Wait before retry
+          await new Promise((resolve) =>
+            setTimeout(resolve, 1000 * retryCount)
+          );
+        }
+      }
+
+      if (!stream) {
+        throw new Error("Failed to create download stream after retries");
+      }
+
+      const streamTimeout = setTimeout(() => {
+        console.log("Stream timeout reached (5 minutes), aborting request");
+        if (!res.headersSent) {
+          res.status(408).json({ error: "Stream timeout" });
+        }
+      }, 5 * 60 * 1000);
+
+      try {
+        // Convert ReadableStream to Node.js readable stream
+        const reader = stream.getReader();
+
+        const pump = async () => {
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              if (!res.destroyed) {
+                res.write(value);
+              } else {
+                break;
+              }
+            }
+
+            if (!res.destroyed) {
+              res.end();
+            }
+          } catch (error) {
+            console.error("Stream read error:", error);
+            if (!res.headersSent) {
+              res.status(500).json({ error: "Stream error occurred" });
+            }
+          } finally {
+            clearTimeout(streamTimeout);
+            reader.releaseLock();
+          }
+        };
+
+        res.on("close", () => {
+          reader.cancel();
+          clearTimeout(streamTimeout);
+        });
+
+        res.on("error", () => {
+          reader.cancel();
+          clearTimeout(streamTimeout);
+        });
+
+        await pump();
+      } catch (error) {
+        clearTimeout(streamTimeout);
+        throw error;
+      }
+    } catch (innerError: any) {
+      // Handle specific youtubei.js errors
+      if (innerError.message?.includes("No valid URL to decipher")) {
+        console.error(
+          "Decipher error, video may be restricted or require authentication"
+        );
+        return void res.status(403).json({
+          error: "Video access restricted - unable to decrypt audio stream",
+        });
+      }
+      throw innerError;
+    }
+  } catch (error: any) {
     console.error("Error streaming YouTube audio:", error);
     if (!res.headersSent) {
-      res.status(500).json({ error: "Failed to stream audio" });
+      // Provide more specific error messages
+      if (error.message?.includes("Video unavailable")) {
+        res.status(404).json({ error: "Video not found or unavailable" });
+      } else if (error.message?.includes("Sign in to confirm")) {
+        res.status(403).json({ error: "Video requires authentication" });
+      } else if (error.message?.includes("Private video")) {
+        res.status(403).json({ error: "Video is private" });
+      } else {
+        res.status(500).json({ error: "Failed to stream audio" });
+      }
     }
   }
 });
@@ -1652,18 +1763,17 @@ app.get("/api/youtube/search", async (req, res, _next: NextFunction) => {
       `maxResults=${maxResults}&` +
       `key=${API_KEY}`;
 
-    const searchResponse = await fetch(
-      searchUrl,
-      proxyAgent ? { agent: proxyAgent } : {}
-    );
-    const searchData = (await searchResponse.json()) as any;
+    const searchResponse = await fetch(searchUrl);
+    const searchData = await searchResponse.json();
 
     if (!searchResponse.ok) {
-      throw new Error(searchData.error?.message || "YouTube API error");
+      throw new Error(
+        (searchData as any).error?.message || "YouTube API error"
+      );
     }
 
     // Get video details for duration
-    const videoIds = searchData.items
+    const videoIds = (searchData as any).items
       .map((item: any) => item.id.videoId)
       .join(",");
     const detailsUrl =
@@ -1672,19 +1782,18 @@ app.get("/api/youtube/search", async (req, res, _next: NextFunction) => {
       `id=${videoIds}&` +
       `key=${API_KEY}`;
 
-    const detailsResponse = await fetch(
-      detailsUrl,
-      proxyAgent ? { agent: proxyAgent } : {}
-    );
-    const detailsData = (await detailsResponse.json()) as any;
+    const detailsResponse = await fetch(detailsUrl);
+    const detailsData = await detailsResponse.json();
 
     if (!detailsResponse.ok) {
-      throw new Error(detailsData.error?.message || "YouTube API error");
+      throw new Error(
+        (detailsData as any).error?.message || "YouTube API error"
+      );
     }
 
     // Combine search results with duration info
-    const results = searchData.items.map((item: any) => {
-      const details = detailsData.items.find(
+    const results = (searchData as any).items.map((item: any) => {
+      const details = (detailsData as any).items.find(
         (d: any) => d.id === item.id.videoId
       );
       return {
