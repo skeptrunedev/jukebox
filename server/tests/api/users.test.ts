@@ -47,8 +47,30 @@ describe("Users API", () => {
     userBId = res.body.id;
   });
 
-  it("should list users", async () => {
-    const res = await request(app).get("/api/users");
+  it("should get a user by id", async () => {
+    const res = await request(app).get(`/api/users/${userAId}`);
+    expect(res.status).to.equal(200);
+    expect(res.body).to.deep.equal({
+      id: userAId,
+      fingerprint: fingerprintA,
+      username: usernameA,
+    });
+  });
+
+  it("should get a user by fingerprint", async () => {
+    const res = await request(app).get(`/api/users/${fingerprintA}`);
+    expect(res.status).to.equal(200);
+    expect(res.body).to.deep.equal({
+      id: userAId,
+      fingerprint: fingerprintA,
+      username: usernameA,
+    });
+  });
+
+  it("should get users by multiple ids", async () => {
+    const res = await request(app)
+      .get("/api/users/by-ids")
+      .query({ ids: `${userAId},${userBId}` });
     expect(res.status).to.equal(200);
     expect(res.body)
       .to.be.an("array")
@@ -62,28 +84,6 @@ describe("Users API", () => {
         fingerprint: fingerprintB,
         username: usernameB,
       });
-  });
-
-  it("should get a user by id", async () => {
-    const res = await request(app).get(`/api/users/${userAId}`);
-    expect(res.status).to.equal(200);
-    expect(res.body).to.deep.equal({
-      id: userAId,
-      fingerprint: fingerprintA,
-      username: usernameA,
-    });
-  });
-
-  it("should get a user by fingerprint", async () => {
-    const res = await request(app).get(
-      `/api/users/${fingerprintA}`
-    );
-    expect(res.status).to.equal(200);
-    expect(res.body).to.deep.equal({
-      id: userAId,
-      fingerprint: fingerprintA,
-      username: usernameA,
-    });
   });
 
   it("should update a user's username", async () => {

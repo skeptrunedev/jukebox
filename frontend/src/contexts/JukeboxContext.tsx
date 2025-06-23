@@ -165,10 +165,20 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
       const songs = await getSongsByIds(songIds);
       const songMap = new Map(songs.map((song) => [song.id, song]));
 
+      const userIds = response.data
+        .map((boxSong) => boxSong.user_id)
+        .filter((id): id is string => Boolean(id));
+
+      const users = await Promise.all(
+        userIds.map((id) => getUser(id).catch(() => undefined))
+      );
+      const userMap = new Map(users.map((user) => [user?.id || "", user]));
+
       // Convert box songs to SongRow format
       const newSongRows: SongRow[] = response.data
         .map((boxSong) => {
           const song = songMap.get(boxSong.song_id || "");
+          const user = userMap.get(boxSong.user_id || "");
           if (!song) return null;
 
           return {
@@ -181,6 +191,7 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
             thumbnail_url: song.thumbnail_url || "",
             duration: song.duration || 0,
             status: boxSong.status ?? "queued",
+            user,
           };
         })
         .filter(
@@ -259,7 +270,7 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
 
     const refetchInterval = setInterval(() => {
       fetchBoxSongs();
-    }, 500);
+    }, 2000);
 
     return () => clearInterval(refetchInterval);
   }, [fetchBoxSongs]);
@@ -305,6 +316,7 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
           thumbnail_url: song.thumbnail_url,
           duration: song.duration,
           status: relation.status ?? "queued",
+          user,
         };
 
         setRows((prev) => {

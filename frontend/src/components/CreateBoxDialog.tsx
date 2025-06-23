@@ -51,7 +51,7 @@ export function CreateBoxDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button size="lg" className="text-xl hover:cursor-pointer">
+        <Button size="lg" className="sm:text-xl hover:cursor-pointer">
           Create Jukebox
         </Button>
       </DialogTrigger>

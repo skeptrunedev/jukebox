@@ -49,6 +49,10 @@ export default function SharePage() {
                         : "-",
                   },
                   {
+                    header: "Added By",
+                    cell: (r) => r.user.username || "Unknown",
+                  },
+                  {
                     header: "Status",
                     cell: (r) =>
                       r.status === "playing" ? (

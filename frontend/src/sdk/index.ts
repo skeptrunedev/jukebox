@@ -171,6 +171,24 @@ export async function getSongsByIds(
 }
 
 /**
+ * Fetch users by multiple IDs.
+ */
+export async function getUsersByIds(
+  ids: string[]
+): Promise<components["schemas"]["User"][]> {
+  const idsParam = ids.join(",");
+  const params = new URLSearchParams({ ids: idsParam });
+
+  const response = await fetch(`${API_HOST}/api/users/by-ids?${params}`);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch users by IDs: ${response.status} ${response.statusText}`
+    );
+  }
+  return await response.json();
+}
+
+/**
  * Create a new song.
  */
 export async function createSong(

@@ -134,7 +134,7 @@ export function Layout({ children }: LayoutProps) {
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="text-lg font-semibold text-foreground hover:text-main transition-colors cursor-pointer px-2 py-1 rounded-md hover:bg-secondary-background/50 flex items-center gap-2"
+                    className="sm:text-lg font-semibold text-foreground hover:text-main transition-colors cursor-pointer px-2 py-1 rounded-md hover:bg-secondary-background/50 flex items-center gap-2"
                   >
                     {jukeboxName}
                     <Edit className="h-4 w-4 opacity-60" />
@@ -174,11 +174,11 @@ export function Layout({ children }: LayoutProps) {
             </div>
 
             {/* Center content */}
-            <div className="flex items-center sm:ml-20">
+            <div className="flex items-center sm:ml-22">
               {renderNavbarCenter()}
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Button asChild className="bg-white">
                 <a
                   href="https://github.com/skeptrunedev/jukebox"

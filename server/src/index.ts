@@ -109,27 +109,61 @@ app.use((req, res, next) => {
   });
   next();
 });
+setupSwagger(app);
 
 /**
  * @openapi
- * /api/users:
+ * /api/users/by-ids:
  *   get:
  *     tags:
  *       - Users
- *     summary: Get all users
+ *     summary: Get users by multiple IDs
+ *     parameters:
+ *       - in: query
+ *         name: ids
+ *         required: true
+ *         schema:
+ *           type: string
+ *           description: Comma-separated list of user IDs
+ *         example: "1,2,3"
  *     responses:
  *       200:
- *         description: A list of users
+ *         description: A list of users matching the provided IDs
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Invalid or missing IDs parameter
  */
-app.get("/api/users", async (req, res) => {
+app.get("/api/users/by-ids", async (req, res) => {
   try {
-    const users = await db.selectFrom("users").selectAll().execute();
+    const idsParam = req.query.ids;
+
+    if (!idsParam || typeof idsParam !== "string") {
+      return void res.status(400).json({
+        error:
+          "Missing or invalid 'ids' parameter. Expected comma-separated list of user IDs.",
+      });
+    }
+
+    const ids = idsParam
+      .split(",")
+      .map((id) => id.trim())
+      .filter((id) => id.length > 0);
+
+    if (ids.length === 0) {
+      return void res.status(400).json({ error: "No valid IDs provided" });
+    }
+
+    const users = await db
+      .selectFrom("users")
+      .selectAll()
+      .where("id", "in", ids)
+      .execute();
+
     res.json(users);
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
@@ -339,7 +373,6 @@ app.delete("/api/users/:id", async (req, res) => {
     res.status(500).json({ error: (error as Error).message });
   }
 });
-setupSwagger(app);
 
 /**
  * @openapi

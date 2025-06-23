@@ -161,6 +161,10 @@ const columns: Column<SongRow>[] = [
       new Date((r.duration ?? 0) * 1000).toISOString().slice(14, 19),
   },
   {
+    header: "Added By",
+    cell: (r) => r.user.username || "Unknown",
+  },
+  {
     header: "Status",
     cell: (r: SongRow) => (
       <div className="flex items-center gap-2">
