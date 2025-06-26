@@ -1255,12 +1255,18 @@ app.delete("/api/songs/:id", async (req, res, _next: NextFunction) => {
 
 /**
  * @openapi
- * /api/box_songs:
+ * /api/boxes/{boxId}/songs:
  *   get:
  *     tags:
  *       - BoxSongs
- *     summary: Get all box-song relationships with pagination
+ *     summary: Get all box-song relationships for a specific box with pagination
  *     parameters:
+ *       - in: path
+ *         name: boxId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box ID or slug
  *       - in: query
  *         name: limit
  *         schema:
@@ -1275,7 +1281,7 @@ app.delete("/api/songs/:id", async (req, res, _next: NextFunction) => {
  *         description: Number of results to skip
  *     responses:
  *       200:
- *         description: A paginated list of box-song relations
+ *         description: A paginated list of box-song relations for the specified box
  *         content:
  *           application/json:
  *             schema:
@@ -1294,15 +1300,30 @@ app.delete("/api/songs/:id", async (req, res, _next: NextFunction) => {
  *                       type: integer
  *                     total:
  *                       type: integer
+ *       404:
+ *         description: Box not found
  */
-app.get("/api/box_songs", async (req, res, _next: NextFunction) => {
+app.get("/api/boxes/:boxId/songs", async (req, res, _next: NextFunction) => {
   try {
+    const boxIdentifier = req.params.boxId;
     const limit = parseInt(req.query.limit as string) || 10;
     const offset = parseInt(req.query.offset as string) || 0;
+
+    // Validate that the box exists (accepting either box ID or slug)
+    const box = await db
+      .selectFrom("boxes")
+      .select("id")
+      .where(sql<boolean>`id = ${boxIdentifier} OR slug = ${boxIdentifier}`)
+      .executeTakeFirst();
+
+    if (!box) {
+      return void res.status(404).json({ error: "Box not found" });
+    }
 
     const rels = await db
       .selectFrom("box_songs")
       .selectAll()
+      .where("box_id", "=", box.id)
       .orderBy("position", "asc")
       .orderBy("id", "asc")
       .limit(limit)
@@ -1312,6 +1333,7 @@ app.get("/api/box_songs", async (req, res, _next: NextFunction) => {
     const totalResult = await db
       .selectFrom("box_songs")
       .select(sql<number>`count(*)`.as("count"))
+      .where("box_id", "=", box.id)
       .executeTakeFirst();
     const totalCount = totalResult?.count ?? 0;
 

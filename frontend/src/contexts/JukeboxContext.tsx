@@ -146,7 +146,7 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
     try {
       const limit = 20; // You can make this configurable
       const offset = page * limit;
-      const response = await getBoxSongs({ limit, offset });
+      const response = await getBoxSongs(box?.id ?? "", { limit, offset });
 
       if (!response.data || response.data.length === 0) {
         setRows((prevRows) => {
@@ -218,7 +218,7 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [boxSlug, page]);
+  }, [box?.id, boxSlug, page]);
 
   useEffect(() => {
     const storedFingerprint = localStorage.getItem("jukebox-fingerprint");
@@ -310,7 +310,6 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
           box_id: boxSlug,
           song_id: song.id || "",
           user_id: user.id,
-          position: rows.length + 1,
           status: "queued",
         });
 
@@ -340,7 +339,7 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [boxSlug, rows.length, user]
+    [boxSlug, user]
   );
 
   const updateStatus = useCallback(

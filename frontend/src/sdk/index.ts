@@ -54,13 +54,16 @@ export async function updateBox(
 }
 
 /**
- * Fetch box-song relationships with pagination support.
+ * Fetch box-song relationships for a specific box with pagination support.
  */
-export async function getBoxSongs(options?: {
-  limit?: number;
-  offset?: number;
-}): Promise<
-  paths["/api/box_songs"]["get"]["responses"]["200"]["content"]["application/json"]
+export async function getBoxSongs(
+  boxId: string,
+  options?: {
+    limit?: number;
+    offset?: number;
+  }
+): Promise<
+  paths["/api/boxes/{boxId}/songs"]["get"]["responses"]["200"]["content"]["application/json"]
 > {
   const params = new URLSearchParams();
   if (options?.limit !== undefined) {
@@ -71,8 +74,8 @@ export async function getBoxSongs(options?: {
   }
 
   const url = params.toString()
-    ? `${API_HOST}/api/box_songs?${params}`
-    : `${API_HOST}/api/box_songs`;
+    ? `${API_HOST}/api/boxes/${boxId}/songs?${params}`
+    : `${API_HOST}/api/boxes/${boxId}/songs`;
 
   const response = await fetch(url);
   if (!response.ok) {

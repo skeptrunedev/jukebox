@@ -4,24 +4,27 @@
  */
 
 export interface paths {
-    "/api/users": {
+    "/api/users/by-ids": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get all users */
+        /** Get users by multiple IDs */
         get: {
             parameters: {
-                query?: never;
+                query: {
+                    /** @example 1,2,3 */
+                    ids: string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description A list of users */
+                /** @description A list of users matching the provided IDs */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -30,37 +33,8 @@ export interface paths {
                         "application/json": components["schemas"]["User"][];
                     };
                 };
-            };
-        };
-        put?: never;
-        /** Create a new user */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        fingerprint: string;
-                        username: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Created user */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["User"];
-                    };
-                };
-                /** @description Fingerprint already exists */
-                409: {
+                /** @description Invalid or missing IDs parameter */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -68,6 +42,8 @@ export interface paths {
                 };
             };
         };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -190,37 +166,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/by-ids": {
+    "/api/users": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get users by multiple IDs */
-        get: {
+        get?: never;
+        put?: never;
+        /** Create a new user */
+        post: {
             parameters: {
-                query: {
-                    /** @example 1,2,3 */
-                    ids: string;
-                };
+                query?: never;
                 header?: never;
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": {
+                        fingerprint: string;
+                        username: string;
+                    };
+                };
+            };
             responses: {
-                /** @description A list of users matching the provided IDs */
-                200: {
+                /** @description Created user */
+                201: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["User"][];
+                        "application/json": components["schemas"]["User"];
                     };
                 };
-                /** @description Invalid or missing IDs parameter */
-                400: {
+                /** @description Fingerprint already exists */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -228,8 +210,6 @@ export interface paths {
                 };
             };
         };
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -720,14 +700,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/box_songs": {
+    "/api/boxes/{boxId}/songs": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get all box-song relationships with pagination */
+        /** Get all box-song relationships for a specific box with pagination */
         get: {
             parameters: {
                 query?: {
@@ -737,12 +717,15 @@ export interface paths {
                     offset?: number;
                 };
                 header?: never;
-                path?: never;
+                path: {
+                    /** @description Box ID or slug */
+                    boxId: string;
+                };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description A paginated list of box-song relations */
+                /** @description A paginated list of box-song relations for the specified box */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -758,42 +741,17 @@ export interface paths {
                         };
                     };
                 };
-            };
-        };
-        put?: never;
-        /** Create a new box-song relationship */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @description Box ID or slug */
-                        box_id: string;
-                        song_id: string;
-                        user_id: string;
-                        position: number;
-                        /** @enum {string} */
-                        status?: "queued" | "playing" | "played";
-                    };
-                };
-            };
-            responses: {
-                /** @description Created box-song relation */
-                201: {
+                /** @description Box not found */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content: {
-                        "application/json": components["schemas"]["BoxSong"];
-                    };
+                    content?: never;
                 };
             };
         };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -907,6 +865,56 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/box_songs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a new box-song relationship */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Box ID or slug */
+                        box_id: string;
+                        song_id: string;
+                        user_id: string;
+                        /**
+                         * @default queued
+                         * @enum {string}
+                         */
+                        status?: "queued" | "playing" | "played";
+                    };
+                };
+            };
+            responses: {
+                /** @description Created box-song relation */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BoxSong"];
+                    };
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;

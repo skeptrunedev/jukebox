@@ -63,7 +63,7 @@ describe("BoxSongs API", () => {
   });
 
   it("should list box-song relations", async () => {
-    const res = await request(app).get("/api/box_songs");
+    const res = await request(app).get(`/api/boxes/${boxId}/songs`);
     expect(res.status).to.equal(200);
     expect(res.body.data).to.be.an("array");
     const relation = res.body.data.find((rel: any) => rel.id === relId);
@@ -170,13 +170,11 @@ describe("BoxSongs API", () => {
     beforeEach(async () => {
       // Clean up any existing relations in the fair queue box before each test
       const relations = await request(app)
-        .get("/api/box_songs")
+        .get(`/api/boxes/${fairBoxId}/songs`)
         .query({ limit: 100 });
 
       for (const rel of relations.body.data) {
-        if (rel.box_id === fairBoxId) {
-          await request(app).delete(`/api/box_songs/${rel.id}`);
-        }
+        await request(app).delete(`/api/box_songs/${rel.id}`);
       }
     });
 
@@ -209,10 +207,10 @@ describe("BoxSongs API", () => {
       expect(res3.body.position).to.equal(3);
 
       // Verify final order by getting all relations
-      const allRes = await request(app).get("/api/box_songs");
-      const boxSongs = allRes.body.data
-        .filter((rel: any) => rel.box_id === fairBoxId)
-        .sort((a: any, b: any) => a.position - b.position);
+      const allRes = await request(app).get(`/api/boxes/${fairBoxId}/songs`);
+      const boxSongs = allRes.body.data.sort(
+        (a: any, b: any) => a.position - b.position
+      );
 
       expect(boxSongs).to.have.length(3);
       expect(boxSongs[0].user_id).to.equal(fairUserId1); // position 1
@@ -235,10 +233,10 @@ describe("BoxSongs API", () => {
         .send({ box_id: fairBoxId, song_id: songId3, user_id: fairUserId2 });
 
       // Get updated queue order
-      const allRes = await request(app).get("/api/box_songs");
-      const boxSongs = allRes.body.data
-        .filter((rel: any) => rel.box_id === fairBoxId)
-        .sort((a: any, b: any) => a.position - b.position);
+      const allRes = await request(app).get(`/api/boxes/${fairBoxId}/songs`);
+      const boxSongs = allRes.body.data.sort(
+        (a: any, b: any) => a.position - b.position
+      );
 
       expect(boxSongs).to.have.length(3);
       expect(boxSongs[0].user_id).to.equal(fairUserId1); // position 1
@@ -269,10 +267,10 @@ describe("BoxSongs API", () => {
         .send({ box_id: fairBoxId, song_id: songId5, user_id: fairUserId2 });
 
       // Get final order
-      const allRes = await request(app).get("/api/box_songs");
-      const boxSongs = allRes.body.data
-        .filter((rel: any) => rel.box_id === fairBoxId)
-        .sort((a: any, b: any) => a.position - b.position);
+      const allRes = await request(app).get(`/api/boxes/${fairBoxId}/songs`);
+      const boxSongs = allRes.body.data.sort(
+        (a: any, b: any) => a.position - b.position
+      );
 
       expect(boxSongs).to.have.length(5);
       // Should be: User1, User2, User3, User1, User2
@@ -325,10 +323,10 @@ describe("BoxSongs API", () => {
         .send({ box_id: fairBoxId, song_id: songId6, user_id: fairUserId2 });
 
       // Get final order
-      const allRes = await request(app).get("/api/box_songs");
-      const boxSongs = allRes.body.data
-        .filter((rel: any) => rel.box_id === fairBoxId)
-        .sort((a: any, b: any) => a.position - b.position);
+      const allRes = await request(app).get(`/api/boxes/${fairBoxId}/songs`);
+      const boxSongs = allRes.body.data.sort(
+        (a: any, b: any) => a.position - b.position
+      );
 
       expect(boxSongs).to.have.length(6);
 
