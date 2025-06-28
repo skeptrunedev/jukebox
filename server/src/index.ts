@@ -87,45 +87,11 @@ import http from "http";
 import { randomUUID } from "crypto";
 import { sql } from "kysely";
 import { setupSwagger } from "./swagger";
-import { Innertube } from "youtubei.js";
 import fetch from "node-fetch";
-import { HttpsProxyAgent } from "https-proxy-agent";
+import youtubedl from "youtube-dl-exec";
 
 const app = express();
 const port = process.env.PORT || 3001;
-
-// Configure proxy for YouTube requests
-const proxyUsername = process.env.PROXY_USERNAME;
-const proxyPassword = process.env.PROXY_PASSWORD;
-const proxyCountry = process.env.PROXY_COUNTRY || "US";
-const proxyHost = process.env.PROXY_HOST || "pr.oxylabs.io:7777";
-
-if (!proxyUsername || !proxyPassword) {
-  console.warn(
-    "Warning: PROXY_USERNAME and PROXY_PASSWORD environment variables are not set. Proxy functionality may not work."
-  );
-}
-
-const proxyAgent =
-  proxyUsername && proxyPassword
-    ? new HttpsProxyAgent(
-        `http://${encodeURIComponent(
-          proxyUsername
-        )}-cc-${proxyCountry}:${encodeURIComponent(proxyPassword)}@${proxyHost}`
-      )
-    : undefined;
-
-// Create a singleton YouTube instance to avoid repeated initialization
-let youtubeInstance: any = null;
-const getYouTubeInstance = async () => {
-  if (!youtubeInstance) {
-    youtubeInstance = await Innertube.create({
-      visitor_data: undefined,
-      enable_session_cache: true,
-    });
-  }
-  return youtubeInstance;
-};
 
 app.use(
   cors({
@@ -455,212 +421,109 @@ app.delete("/api/users/:id", async (req, res) => {
  *                   type: string
  */
 app.get("/api/youtube/audio", async (req, res) => {
-  const videoId = req.query.videoId;
-  if (!videoId || typeof videoId !== "string") {
-    return void res
-      .status(400)
-      .json({ error: "videoId query parameter is required" });
-  }
-
   try {
-    // Validate the video ID format (basic regex check)
-    const videoIdRegex = /^[a-zA-Z0-9_-]{11}$/;
-    if (!videoIdRegex.test(videoId)) {
-      return void res.status(400).json({ error: "Invalid YouTube video ID" });
+    const videoId = req.query.videoId as string;
+
+    if (!videoId) {
+      return void res.status(400).json({ error: "Missing videoId parameter" });
     }
 
-    // Initialize Innertube with better configuration
-    const youtube = await getYouTubeInstance();
-
-    let info;
-    let audioFormat;
-    let stream;
-
-    try {
-      // Get video info
-      info = await youtube.getInfo(videoId);
-
-      // Check if video is available
-      if (info.basic_info.is_private || info.basic_info.is_live_content) {
-        return void res
-          .status(404)
-          .json({ error: "Video not found or unavailable" });
-      }
-
-      // Try to get the best audio format with fallback options
-      audioFormat = info.chooseFormat({
-        type: "audio",
-        quality: "best",
-        format: "any",
-      });
-
-      if (!audioFormat) {
-        // Try alternative format selection
-        audioFormat = info.streaming_data?.adaptive_formats?.find(
-          (format: any) => format.mime_type?.includes("audio")
-        );
-      }
-
-      if (!audioFormat) {
-        return void res
-          .status(500)
-          .json({ error: "No suitable audio format found" });
-      }
-
-      // Set response headers
-      const mimeType = audioFormat.mime_type?.split(";")[0] || "audio/webm";
-      res.setHeader("Content-Type", mimeType);
-      res.setHeader("Accept-Ranges", "bytes");
-      res.setHeader(
-        "Content-Disposition",
-        `inline; filename="${videoId}.webm"`
-      );
-      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-      res.setHeader("Pragma", "no-cache");
-      res.setHeader("Expires", "0");
-      res.setHeader("X-Content-Type-Options", "nosniff");
-
-      if (audioFormat.content_length) {
-        res.setHeader("Content-Length", audioFormat.content_length);
-      }
-
-      // Try to create download stream with retries
-      let retryCount = 0;
-      const maxRetries = 3;
-
-      while (retryCount < maxRetries) {
-        try {
-          stream = await youtube.download(videoId, {
-            type: "audio",
-            quality: "best",
-            format: "any",
-          });
-          break; // Success, exit retry loop
-        } catch (downloadError: any) {
-          console.error(
-            `Download attempt ${retryCount + 1} failed:`,
-            downloadError.message
-          );
-          retryCount++;
-
-          if (retryCount >= maxRetries) {
-            // If all retries failed, try alternative approach
-            if (audioFormat.url) {
-              console.log("Trying direct URL fetch as fallback");
-              const response = await fetch(audioFormat.url, {
-                ...(proxyAgent && { agent: proxyAgent }),
-                headers: {
-                  "User-Agent":
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-                  Accept: "audio/webm,audio/ogg,audio/*,*/*;q=0.9",
-                  "Accept-Language": "en-US,en;q=0.9",
-                  Range: "bytes=0-",
-                },
-              });
-              if (!response.ok) {
-                throw new Error(
-                  `HTTP ${response.status}: ${response.statusText}`
-                );
-              }
-
-              // Stream the response directly
-              const nodeStream = response.body;
-              if (nodeStream) {
-                nodeStream.pipe(res);
-                return;
-              }
-            }
-            throw downloadError;
-          }
-
-          // Wait before retry
-          await new Promise((resolve) =>
-            setTimeout(resolve, 1000 * retryCount)
-          );
-        }
-      }
-
-      if (!stream) {
-        throw new Error("Failed to create download stream after retries");
-      }
-
-      const streamTimeout = setTimeout(() => {
-        console.log("Stream timeout reached (5 minutes), aborting request");
-        if (!res.headersSent) {
-          res.status(408).json({ error: "Stream timeout" });
-        }
-      }, 5 * 60 * 1000);
-
-      try {
-        // Convert ReadableStream to Node.js readable stream
-        const reader = stream.getReader();
-
-        const pump = async () => {
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-
-              if (!res.destroyed) {
-                res.write(value);
-              } else {
-                break;
-              }
-            }
-
-            if (!res.destroyed) {
-              res.end();
-            }
-          } catch (error) {
-            console.error("Stream read error:", error);
-            if (!res.headersSent) {
-              res.status(500).json({ error: "Stream error occurred" });
-            }
-          } finally {
-            clearTimeout(streamTimeout);
-            reader.releaseLock();
-          }
-        };
-
-        res.on("close", () => {
-          reader.cancel();
-          clearTimeout(streamTimeout);
-        });
-
-        res.on("error", () => {
-          reader.cancel();
-          clearTimeout(streamTimeout);
-        });
-
-        await pump();
-      } catch (error) {
-        clearTimeout(streamTimeout);
-        throw error;
-      }
-    } catch (innerError: any) {
-      // Handle specific youtubei.js errors
-      if (innerError.message?.includes("No valid URL to decipher")) {
-        console.error(
-          "Decipher error, video may be restricted or require authentication"
-        );
-        return void res.status(403).json({
-          error: "Video access restricted - unable to decrypt audio stream",
-        });
-      }
-      throw innerError;
+    // Validate videoId format (basic YouTube video ID validation)
+    if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+      return void res.status(400).json({ error: "Invalid videoId format" });
     }
-  } catch (error: any) {
-    console.error("Error streaming YouTube audio:", error);
-    if (!res.headersSent) {
-      // Provide more specific error messages
-      if (error.message?.includes("Video unavailable")) {
-        res.status(404).json({ error: "Video not found or unavailable" });
-      } else if (error.message?.includes("Sign in to confirm")) {
-        res.status(403).json({ error: "Video requires authentication" });
-      } else if (error.message?.includes("Private video")) {
-        res.status(403).json({ error: "Video is private" });
-      } else {
+
+    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+    // Set headers for audio streaming
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Transfer-Encoding", "chunked");
+    res.setHeader("Accept-Ranges", "bytes");
+
+    // Use youtube-dl-exec to get the best audio format and stream it
+    const subprocess = youtubedl.exec(videoUrl, {
+      format: "bestaudio[ext=m4a]/bestaudio/best",
+      output: "-", // Output to stdout
+      quiet: true,
+      noWarnings: true,
+      preferFreeFormats: true,
+    });
+
+    // Set a timeout to prevent hanging
+    const timeout = setTimeout(() => {
+      if (!subprocess.killed) {
+        console.log("YouTube audio streaming timeout, killing subprocess");
+        subprocess.kill("SIGTERM");
+      }
+    }, 30000); // 30 second timeout
+
+    // Handle subprocess errors
+    subprocess.on("error", (error) => {
+      console.error("YouTube audio streaming error:", error);
+      if (!res.headersSent) {
         res.status(500).json({ error: "Failed to stream audio" });
+      }
+    });
+
+    // Handle subprocess close
+    subprocess.on("close", (code, signal) => {
+      clearTimeout(timeout); // Clear the timeout when process closes
+      if (code !== 0 && code !== null) {
+        console.error(`YouTube-dl process exited with code ${code}`);
+        if (!res.headersSent) {
+          res.status(500).json({ error: "Audio streaming failed" });
+        }
+      } else if (signal) {
+        console.log(`YouTube-dl process terminated with signal ${signal}`);
+        // Don't send error response for SIGTERM as it's expected when client disconnects
+        if (signal !== "SIGTERM" && !res.headersSent) {
+          res.status(500).json({ error: "Audio streaming interrupted" });
+        }
+      }
+    });
+
+    // Handle client disconnect
+    req.on("close", () => {
+      clearTimeout(timeout); // Clear the timeout when client disconnects
+      if (!subprocess.killed) {
+        subprocess.kill("SIGTERM");
+      }
+    });
+
+    // Handle response finish (when client stops receiving)
+    res.on("finish", () => {
+      clearTimeout(timeout); // Clear the timeout when response finishes
+      if (!subprocess.killed) {
+        subprocess.kill("SIGTERM");
+      }
+    });
+
+    // Pipe the audio data to the response
+    if (subprocess.stdout) {
+      subprocess.stdout.pipe(res);
+    } else {
+      throw new Error("Failed to access subprocess stdout");
+    }
+
+    // Handle stderr for logging
+    if (subprocess.stderr) {
+      subprocess.stderr.on("data", (data) => {
+        console.error("YouTube-dl stderr:", data.toString());
+      });
+    }
+  } catch (error) {
+    console.error("YouTube audio route error:", error);
+    if (!res.headersSent) {
+      // Handle specific ChildProcessError
+      if (
+        error &&
+        typeof error === "object" &&
+        "name" in error &&
+        error.name === "ChildProcessError"
+      ) {
+        res.status(500).json({ error: "Audio extraction failed" });
+      } else {
+        res.status(500).json({ error: (error as Error).message });
       }
     }
   }
@@ -1834,23 +1697,6 @@ app.get("/api/youtube/search", async (req, res, _next: NextFunction) => {
   } catch (error) {
     console.error("YouTube search error:", error);
     res.status(500).json({ error: (error as Error).message });
-  }
-});
-
-// Test proxy connection
-app.get("/api/test-proxy", async (req, res) => {
-  try {
-    const response = await fetch("https://ip.oxylabs.io/location", {
-      method: "get",
-      ...(proxyAgent && { agent: proxyAgent }),
-    });
-    const data = await response.text();
-    res.json({ proxyTest: data });
-  } catch (error) {
-    console.error("Proxy test error:", error);
-    res
-      .status(500)
-      .json({ error: "Proxy test failed", details: (error as Error).message });
   }
 });
 
