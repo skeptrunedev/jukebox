@@ -126,6 +126,7 @@ export function InteractiveSongTable({
           getRowProps={getRowProps}
           renderRow={(row, columns, getRowProps) => (
             <SortableRow
+              key={row.id}
               row={row}
               columns={columns.slice(1)}
               getRowProps={getRowProps}
