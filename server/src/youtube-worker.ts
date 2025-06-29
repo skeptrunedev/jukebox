@@ -135,51 +135,56 @@ async function workerLoop() {
 
         await Promise.race([
           (async () => {
-            const ytdlAgent = proxy
-              ? ytdl.createProxyAgent({
-                  uri: `http://${username}-cc-${country}:${password}@${proxy}`,
+            try {
+              const ytdlAgent = proxy
+                ? ytdl.createProxyAgent({
+                    uri: `http://${username}-cc-${country}:${password}@${proxy}`,
+                  })
+                : undefined;
+              const info = await ytdl.getInfo(youtube_id, { agent: ytdlAgent });
+              const format = ytdl.chooseFormat(info.formats, {
+                quality: "highestaudio",
+                filter: "audioonly",
+              });
+              if (!format || !format.mimeType) {
+                throw new Error("No suitable audio format found");
+              }
+              const { PassThrough } = await import("stream");
+              const stream = ytdl(youtube_id, {
+                quality: "highestaudio",
+                filter: "audioonly",
+                agent: ytdlAgent,
+              });
+              const pass = new PassThrough();
+              stream.pipe(pass);
+              const s3Key = `youtube-audio/${youtube_id}.webm`;
+              await new Upload({
+                client: s3,
+                params: {
+                  Bucket: S3_BUCKET_NAME!,
+                  Key: s3Key,
+                  Body: pass,
+                  ContentType: "audio/webm",
+                  ACL: "public-read",
+                },
+              }).done();
+              // Mark as completed
+              await db
+                .updateTable("song_youtube_status")
+                .set({
+                  status: "completed",
+                  updated_at: new Date().toISOString(),
+                  error_message: null,
                 })
-              : undefined;
-            const info = await ytdl.getInfo(youtube_id, { agent: ytdlAgent });
-            const format = ytdl.chooseFormat(info.formats, {
-              quality: "highestaudio",
-              filter: "audioonly",
-            });
-            if (!format || !format.mimeType) {
-              throw new Error("No suitable audio format found");
+                .where("youtube_id", "=", youtube_id)
+                .where("status", "=", "processing")
+                .execute();
+              console.log(`Uploaded ${youtube_id} to S3 as ${s3Key}`);
+              return;
+            } catch (err) {
+              console.error(`Error processing ${youtube_id}:`, err);
+              throw err;
             }
-            const { PassThrough } = await import("stream");
-            const stream = ytdl(youtube_id, {
-              quality: "highestaudio",
-              filter: "audioonly",
-              agent: ytdlAgent,
-            });
-            const pass = new PassThrough();
-            stream.pipe(pass);
-            const s3Key = `youtube-audio/${youtube_id}.webm`;
-            await new Upload({
-              client: s3,
-              params: {
-                Bucket: S3_BUCKET_NAME!,
-                Key: s3Key,
-                Body: pass,
-                ContentType: "audio/webm",
-                ACL: "public-read",
-              },
-            }).done();
-            // Mark as completed
-            await db
-              .updateTable("song_youtube_status")
-              .set({
-                status: "completed",
-                updated_at: new Date().toISOString(),
-                error_message: null,
-              })
-              .where("youtube_id", "=", youtube_id)
-              .where("status", "=", "processing")
-              .execute();
-            console.log(`Uploaded ${youtube_id} to S3 as ${s3Key}`);
-            return;
           })(),
           new Promise((_, reject) =>
             setTimeout(
