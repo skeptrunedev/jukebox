@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Play, Pause, SkipForward, SkipBack } from "lucide-react";
@@ -210,7 +210,7 @@ export const YouTubePlayer = () => {
     };
   }, [currentSongIndex, songs.length, goToNext, hasInteracted, currentSong]);
 
-  const handlePlayPause = async () => {
+  const handlePlayPause = useCallback(async () => {
     const audio = audioRef.current;
     if (!audio) return;
 
@@ -227,7 +227,7 @@ export const YouTubePlayer = () => {
         // The error will be handled by the audio error event listener
       }
     }
-  };
+  }, [isPlaying]);
 
   const handlePrevious = async () => {
     goToPrevious();
@@ -291,6 +291,28 @@ export const YouTubePlayer = () => {
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
+
+  // Space bar play/pause control
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only trigger if space bar is pressed and not inside an input/textarea
+      if (
+        e.code === "Space" &&
+        !(e.target instanceof HTMLInputElement) &&
+        !(e.target instanceof HTMLTextAreaElement) &&
+        !e.repeat &&
+        currentSong &&
+        !isLoading
+      ) {
+        e.preventDefault();
+        handlePlayPause();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [currentSong, isLoading, isPlaying, handlePlayPause]);
 
   if (!currentSong) {
     return (
