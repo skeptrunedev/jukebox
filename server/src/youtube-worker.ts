@@ -115,8 +115,8 @@ async function getRetryCount(youtube_id: string) {
 }
 
 function getTimeoutMs(retryCount: number) {
-  if (retryCount < 3) return 15 * 1000;
-  if (retryCount < 5) return 30 * 1000;
+  if (retryCount < 3) return 30 * 1000;
+  if (retryCount < 5) return 45 * 1000;
   if (retryCount < 7) return 1 * 60 * 1000;
   if (retryCount < 10) return 2 * 60 * 1000;
   return 3 * 60 * 1000;
