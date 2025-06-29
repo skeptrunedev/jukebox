@@ -1,6 +1,6 @@
 import "dotenv/config";
 import fs from "fs";
-import util, { promisify } from "util";
+import util from "util";
 import db from "./db";
 import { sql } from "kysely";
 import ytdl from "@distube/ytdl-core";
@@ -104,8 +104,10 @@ async function getRetryCount(youtube_id: string) {
 }
 
 function getTimeoutMs(retryCount: number) {
-  if (retryCount === 0) return 1 * 60 * 1000;
-  if (retryCount === 1) return 2 * 60 * 1000;
+  if (retryCount < 3) return 15 * 1000;
+  if (retryCount < 5) return 30 * 1000;
+  if (retryCount < 7) return 1 * 60 * 1000;
+  if (retryCount < 10) return 2 * 60 * 1000;
   return 3 * 60 * 1000;
 }
 
@@ -125,6 +127,10 @@ async function workerLoop() {
       );
       try {
         const retryCount = await getRetryCount(youtube_id);
+        console.log(
+          `Processing ${youtube_id} with retry count ${retryCount}`,
+          new Date().toISOString()
+        );
         const timeoutMs = getTimeoutMs(retryCount);
 
         await Promise.race([
@@ -173,6 +179,7 @@ async function workerLoop() {
               .where("status", "=", "processing")
               .execute();
             console.log(`Uploaded ${youtube_id} to S3 as ${s3Key}`);
+            return;
           })(),
           new Promise((_, reject) =>
             setTimeout(
@@ -190,7 +197,7 @@ async function workerLoop() {
           .where("status", "=", "processing")
           .executeTakeFirst();
         const currentRetry = statusRow?.retry_count ?? 0;
-        if (currentRetry < 2) {
+        if (currentRetry < 10) {
           await db
             .updateTable("song_youtube_status")
             .set({

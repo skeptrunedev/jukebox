@@ -56,27 +56,17 @@ export const YouTubePlayer = () => {
           setMediaUrl(result.url);
           setIsLoading(false);
         } else {
-          setIsLoading(false);
+          setIsLoading(true);
           setMediaUrl(null);
+          // Re-poll after a delay if no URL yet
+          pollTimeoutRef.current = setTimeout(poll, 2000);
         }
       } catch (e: unknown) {
-        // Type guard for error with message
-        const isErrorWithMessage = (
-          err: unknown
-        ): err is { message: string } => {
-          return (
-            typeof err === "object" &&
-            err !== null &&
-            "message" in err &&
-            typeof (err as { message: unknown }).message === "string"
-          );
-        };
-        if (isErrorWithMessage(e) && e.message.includes("202")) {
-          pollTimeoutRef.current = setTimeout(poll, 2000);
-        } else {
-          setIsLoading(false);
-          setMediaUrl(null);
-        }
+        console.error("Failed to get YouTube audio signed URL:", e);
+        setIsLoading(true);
+        setMediaUrl(null);
+        // Re-poll after a delay on error
+        pollTimeoutRef.current = setTimeout(poll, 2000);
       }
     };
     poll();
