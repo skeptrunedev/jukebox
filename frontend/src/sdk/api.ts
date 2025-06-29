@@ -223,7 +223,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Stream audio-only content for a YouTube video */
+        /** Get a signed URL to stream audio-only content for a YouTube video from S3 */
         get: {
             parameters: {
                 query: {
@@ -236,14 +236,26 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Audio stream of the requested YouTube video */
+                /** @description Signed URL to the audio file in S3 */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "audio/mpeg": string;
-                        "audio/webm": string;
+                        "application/json": {
+                            url?: string;
+                        };
+                    };
+                };
+                /** @description Audio not found in S3, processing in progress */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error?: string;
+                        };
                     };
                 };
                 /** @description Missing or invalid videoId parameter */
@@ -257,7 +269,18 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Failed to stream audio or server error */
+                /** @description Audio not found in S3 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error?: string;
+                        };
+                    };
+                };
+                /** @description Failed to generate signed URL or server error */
                 500: {
                     headers: {
                         [name: string]: unknown;

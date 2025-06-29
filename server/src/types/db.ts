@@ -20,11 +20,20 @@ export interface Database {
     song_id: string;
     user_id: string;
     position: number;
-    status: 'queued' | 'playing' | 'played';
+    status: "queued" | "playing" | "played";
   };
   users: {
     id: string;
     fingerprint: string;
     username: string;
+  };
+  song_youtube_status: {
+    id: string;
+    youtube_id: string;
+    status: "pending" | "processing" | "completed" | "failed";
+    retry_count: number;
+    error_message: string | null;
+    created_at: string;
+    updated_at: string;
   };
 }

@@ -2,7 +2,43 @@ import "dotenv/config";
 // Redirect console output to a log sink file as well as stdout
 import fs from "fs";
 import util from "util";
-const logStream = fs.createWriteStream("logsink.log", { flags: "a" });
+import express, { NextFunction } from "express";
+import cors from "cors";
+import db from "./db";
+import http from "http";
+import { randomUUID } from "crypto";
+import { sql } from "kysely";
+import { setupSwagger } from "./swagger";
+import fetch from "node-fetch";
+import { S3 } from "@aws-sdk/client-s3";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
+// S3 configuration from .env
+const accessKeyId = process.env.S3_ACCESS_KEY_ID;
+const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
+if (!accessKeyId || !secretAccessKey) {
+  throw new Error(
+    "S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY must be set in environment variables"
+  );
+}
+const s3 = new S3({
+  credentials: {
+    accessKeyId,
+    secretAccessKey,
+  },
+  region: process.env.S3_BUCKET_REGION,
+  endpoint: process.env.S3_ENDPOINT,
+  forcePathStyle: true,
+});
+const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME || "";
+
+if (!fs.existsSync("logsinks")) {
+  fs.mkdirSync("logsinks");
+}
+const logStream = fs.createWriteStream("logsinks/server-logsink.log", {
+  flags: "a",
+});
 const origLog = console.log;
 const origErr = console.error;
 console.log = (...args: unknown[]) => {
@@ -80,22 +116,6 @@ console.error = (...args: unknown[]) => {
  *         username:
  *           type: string
  */
-import express, { NextFunction } from "express";
-import cors from "cors";
-import db from "./db";
-import http from "http";
-import { randomUUID } from "crypto";
-import { sql } from "kysely";
-import { setupSwagger } from "./swagger";
-import fetch from "node-fetch";
-import ytdl from "@distube/ytdl-core";
-import youtubedl from "youtube-dl-exec";
-import { pipeline } from "node:stream/promises";
-
-const username = process.env.PROXY_USERNAME;
-const password = process.env.PROXY_PASSWORD;
-const country = process.env.PROXY_COUNTRY;
-const proxy = process.env.PROXY_HOST;
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -388,7 +408,7 @@ app.delete("/api/users/:id", async (req, res) => {
  *   get:
  *     tags:
  *       - YouTube
- *     summary: Stream audio-only content for a YouTube video
+ *     summary: Get a signed URL to stream audio-only content for a YouTube video from S3
  *     parameters:
  *       - in: query
  *         name: videoId
@@ -398,16 +418,23 @@ app.delete("/api/users/:id", async (req, res) => {
  *         description: The YouTube video ID to stream audio from
  *     responses:
  *       200:
- *         description: Audio stream of the requested YouTube video
+ *         description: Signed URL to the audio file in S3
  *         content:
- *           audio/mpeg:
+ *           application/json:
  *             schema:
- *               type: string
- *               format: binary
- *           audio/webm:
+ *               type: object
+ *               properties:
+ *                 url:
+ *                   type: string
+ *       202:
+ *         description: Audio not found in S3, processing in progress
+ *         content:
+ *           application/json:
  *             schema:
- *               type: string
- *               format: binary
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
  *       400:
  *         description: Missing or invalid videoId parameter
  *         content:
@@ -417,8 +444,17 @@ app.delete("/api/users/:id", async (req, res) => {
  *               properties:
  *                 error:
  *                   type: string
+ *       404:
+ *         description: Audio not found in S3
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
  *       500:
- *         description: Failed to stream audio or server error
+ *         description: Failed to generate signed URL or server error
  *         content:
  *           application/json:
  *             schema:
@@ -427,102 +463,42 @@ app.delete("/api/users/:id", async (req, res) => {
  *                 error:
  *                   type: string
  */
-app.get("/api/youtube/audio", async (req, res) => {
+
+app.get("/api/youtube/audio", async (req, res, _next: NextFunction) => {
   const videoId = req.query.videoId as string;
 
   if (!videoId) {
     return void res.status(400).json({ error: "Missing videoId parameter" });
   }
 
-  // Validate videoId format (basic YouTube video ID validation)
   if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
     return void res.status(400).json({ error: "Invalid videoId format" });
   }
 
-  // declare namespace ProxyAgent {
-  //   export interface Options extends Agent.Options {
-  //     uri: string;
-  //     /**
-  //      * @deprecated use opts.token
-  //      */
-  //     auth?: string;
-  //     token?: string;
-  //     headers?: IncomingHttpHeaders;
-  //     requestTls?: buildConnector.BuildOptions;
-  //     proxyTls?: buildConnector.BuildOptions;
-  //     clientFactory?(origin: URL, opts: object): Dispatcher;
-  //     proxyTunnel?: boolean;
-  //   }
-  // }
-  const ytdlAgent = ytdl.createProxyAgent({
-    uri: `http://${username}-cc-${country}:${password}@${proxy}`,
-  });
-  const info = await ytdl.getInfo(videoId, {
-    agent: ytdlAgent,
-  });
-  const format = ytdl.chooseFormat(info.formats, {
-    quality: "highestaudio",
-    filter: "audioonly",
-  });
-
-  if (!format || !format.mimeType) {
-    return void res
-      .status(500)
-      .json({ error: "No suitable audio format found" });
-  }
-
-  // Set headers for audio streaming
-  res.setHeader("Content-Type", "audio/mpeg");
-  res.setHeader("Transfer-Encoding", "chunked");
-  res.setHeader("Accept-Ranges", "bytes");
-  res.setHeader("Content-Disposition", `inline; filename="${videoId}.webm"`);
-  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-  res.setHeader("Pragma", "no-cache");
-  res.setHeader("Expires", "0");
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  // Do not set Content-Length when using Transfer-Encoding: chunked
-  // Set an alternative header to still prevent playback issues
-  if (format.contentLength) {
-    res.setHeader("Content-Length", format.contentLength);
-  }
+  const s3Key = `youtube-audio/${videoId}.webm`;
 
   try {
-    const stream = ytdl(videoId, {
-      quality: "highestaudio",
-      filter: "audioonly",
-      agent: ytdlAgent,
-    });
+    // Check if the object exists in S3
+    await s3.headObject({ Bucket: S3_BUCKET_NAME, Key: s3Key });
 
-    // Use pipeline to properly stream data from subprocess to response
-    pipeline(stream, res)
-      .then(() => {
-        console.log("Audio streaming completed successfully");
-      })
-      .catch((error: Error) => {
-        console.error("Pipeline error during audio streaming:", error);
-        if (!res.headersSent && !res.destroyed) {
-          res.status(500).json({ error: "Audio streaming pipeline error" });
-        }
+    // Generate a signed URL for streaming with the maximum allowed expiration (7 days = 604800 seconds)
+    const command = new GetObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: s3Key,
+    });
+    const url = await getSignedUrl(s3, command, { expiresIn: 604800 });
+
+    res.json({ url });
+  } catch (err: any) {
+    if (err.name === "NotFound" || err.$metadata?.httpStatusCode === 404) {
+      return void res.status(202).json({
+        error: "Audio not found in S3, please wait while we process the video.",
       });
-
-    // Handle client disconnect
-    req.on("close", () => {
-      console.log("Client disconnected from audio stream");
-    });
-
-    // Handle response finish (when client stops receiving)
-    res.on("finish", () => {});
-
-    // Handle response error
-    res.on("error", (error: Error) => {
-      console.error("Response error during audio streaming:", error);
-    });
-  } catch (error) {
-    console.error("Failed to start YouTube audio streaming:", error);
-    if (!res.headersSent) {
-      res.status(500).json({ error: "Failed to start audio streaming" });
     }
-    return;
+    console.error("S3 error:", err);
+    res
+      .status(500)
+      .json({ error: `Failed to generate signed URL: ${err.message}` });
   }
 });
 
@@ -597,7 +573,7 @@ app.get("/api/boxes", async (req, res, _next: NextFunction) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
+    return void res.status(500).json({ error: (error as Error).message });
   }
 });
 

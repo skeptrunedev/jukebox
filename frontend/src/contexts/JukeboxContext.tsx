@@ -15,7 +15,6 @@ import {
   createSong,
   createBoxSong,
   updateBoxSong,
-  getYouTubeAudioUrl,
   getUser,
   createUser,
   updateUser as updateUserSDK,
@@ -54,9 +53,6 @@ export interface JukeboxContextValue {
     fingerprint?: string;
   }) => Promise<void>;
   currentSongIndex: number;
-  mediaMap: Record<string, string>;
-  /** Get pre-cached audio URL for a YouTube video ID */
-  getMediaUrl: (youtubeId: string) => string | undefined;
   setCurrentSongIndex: Dispatch<SetStateAction<number>>;
   /** Go to the previous song in the playlist */
   goToPrevious: () => void;
@@ -101,33 +97,6 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
   const [page, setPage] = useState(0);
   const [fingerprint, setFingerprint] = useState<string | undefined>();
   const [user, setUser] = useState<User | undefined>();
-
-  // Media cache: YouTube videoId -> audio URL
-  const [mediaMap, setMediaMap] = useState<Record<string, string>>(() => {
-    try {
-      const data = localStorage.getItem("jukebox-media-cache");
-      return data ? JSON.parse(data) : {};
-    } catch {
-      return {};
-    }
-  });
-
-  /** Prefetch and cache audio URLs for given YouTube IDs */
-  const prefetchMedia = useCallback((ids: string[]) => {
-    ids.forEach((id) => {
-      setMediaMap((prev) => {
-        if (prev[id]) return prev;
-        const url = getYouTubeAudioUrl(id);
-        const updated = { ...prev, [id]: url };
-        try {
-          localStorage.setItem("jukebox-media-cache", JSON.stringify(updated));
-        } catch {
-          // ignore
-        }
-        return updated;
-      });
-    });
-  }, []);
 
   const fetchBox = useCallback(async () => {
     if (!boxSlug) return;
@@ -283,17 +252,6 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(refetchInterval);
   }, [fetchBoxSongs]);
 
-  // Prefetch media whenever the songs list changes
-  useEffect(() => {
-    const youtubeIds = songs
-      .map((song) => song.youtube_id)
-      .filter((youtube_id): youtube_id is string => Boolean(youtube_id));
-
-    if (youtubeIds.length > 0) {
-      prefetchMedia(youtubeIds);
-    }
-  }, [songs, prefetchMedia]);
-
   const addSong = useCallback(
     async (songData: {
       title: string;
@@ -426,8 +384,6 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
         setPage,
         addSong,
         updateStatus,
-        mediaMap,
-        getMediaUrl: (id) => mediaMap[id],
         currentSongIndex,
         setCurrentSongIndex,
         goToPrevious,

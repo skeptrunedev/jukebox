@@ -2,7 +2,7 @@ services:
   server:
     build:
       context: ./server
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.server
     ports:
       - "${SERVER_PORT}:${SERVER_INTERNAL_PORT}"
     env_file:
@@ -12,6 +12,23 @@ services:
     volumes:
       - sqlite_data:/data
     restart: unless-stopped
+
+  worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.youtube-worker
+    env_file:
+      - server/.env
+    environment:
+      DB_FILE: ${DB_FILE}
+    volumes:
+      - sqlite_data:/data
+      - logsink_data:/logsinks
+    restart: unless-stopped
+    depends_on:
+      - server
+    deploy:
+      replicas: 3
 
   frontend:
     build:
@@ -27,3 +44,4 @@ services:
 
 volumes:
   sqlite_data:
+  logsink_data:

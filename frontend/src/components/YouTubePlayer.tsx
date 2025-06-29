@@ -3,23 +3,76 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Play, Pause, SkipForward, SkipBack } from "lucide-react";
 import { useJukebox } from "@/hooks/useJukeboxContext";
-import { updateBoxSong } from "@/sdk";
+import { updateBoxSong, getYouTubeAudioSignedUrl } from "@/sdk";
 
 export const YouTubePlayer = () => {
-  const { songs, currentSongIndex, mediaMap, goToPrevious, goToNext } =
-    useJukebox();
+  const { songs, currentSongIndex, goToPrevious, goToNext } = useJukebox();
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const seekTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const autoplayAttemptedRef = useRef(false);
+  const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastPolledIdRef = useRef<string | null>(null);
 
   const currentSong = useMemo(() => {
     return songs[currentSongIndex];
   }, [songs, currentSongIndex]);
+
+  // Poll for YouTube audio signed URL
+  useEffect(() => {
+    if (!currentSong || !currentSong.youtube_id) {
+      setMediaUrl(null);
+      return;
+    }
+    let cancelled = false;
+    setMediaUrl(null);
+    setIsLoading(true);
+    lastPolledIdRef.current = currentSong.youtube_id;
+
+    const poll = async () => {
+      try {
+        const result = await getYouTubeAudioSignedUrl(currentSong.youtube_id!);
+        // If cancelled or song changed, abort
+        if (cancelled || lastPolledIdRef.current !== currentSong.youtube_id)
+          return;
+        if (result && result.url) {
+          setMediaUrl(result.url);
+          setIsLoading(false);
+        } else {
+          setIsLoading(false);
+          setMediaUrl(null);
+        }
+      } catch (e: unknown) {
+        // Type guard for error with message
+        const isErrorWithMessage = (
+          err: unknown
+        ): err is { message: string } => {
+          return (
+            typeof err === "object" &&
+            err !== null &&
+            "message" in err &&
+            typeof (err as { message: unknown }).message === "string"
+          );
+        };
+        if (isErrorWithMessage(e) && e.message.includes("202")) {
+          pollTimeoutRef.current = setTimeout(poll, 2000);
+        } else {
+          setIsLoading(false);
+          setMediaUrl(null);
+        }
+      }
+    };
+    poll();
+    return () => {
+      cancelled = true;
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+    };
+  }, [currentSong]);
 
   useEffect(() => {
     if (songs.length === 0) return;
@@ -35,21 +88,18 @@ export const YouTubePlayer = () => {
       audioRef.current = newAudio;
     }
 
-    const mediaUrl = mediaMap[currentSong.youtube_id];
-    if (mediaUrl && audioRef.current) {
-      // Only update the src if it's different from the current src
-      if (audioRef.current.src !== mediaUrl) {
-        autoplayAttemptedRef.current = false;
-        audioRef.current.src = mediaUrl;
-        setDuration(currentSong.duration ?? 0);
-        setCurrentTime(0);
-        setIsPlaying(false);
-        setIsLoading(true);
-      }
-    } else {
-      console.warn("No media URL found for song:", currentSong.title);
+    if (mediaUrl && audioRef.current && audioRef.current.src !== mediaUrl) {
+      autoplayAttemptedRef.current = false;
+      audioRef.current.src = mediaUrl;
+      setDuration(currentSong.duration ?? 0);
+      setCurrentTime(0);
+      setIsPlaying(false);
+      setIsLoading(true);
+    } else if (!mediaUrl) {
+      // No media URL yet, waiting for polling
+      setIsLoading(true);
     }
-  }, [songs, currentSongIndex, mediaMap]);
+  }, [songs, currentSongIndex, mediaUrl]);
 
   // Audio event listeners effect
   useEffect(() => {

@@ -275,47 +275,19 @@ export async function searchYouTube(
 }
 
 /**
- * Get YouTube audio stream URL for a video.
- * Returns the URL that can be used as a source for audio playback.
+ * Get a signed URL to stream audio-only content for a YouTube video from S3.
  */
-export function getYouTubeAudioUrl(videoId: string): string {
-  const params = new URLSearchParams({ videoId });
-  return `${API_HOST}/api/youtube/audio?${params}`;
-}
-
-/**
- * Stream audio-only content for a YouTube video.
- * Returns a Response object that can be used to stream the audio.
- */
-export async function streamYouTubeAudio(videoId: string): Promise<Response> {
-  const params = new URLSearchParams({ videoId });
-  const response = await fetch(`${API_HOST}/api/youtube/audio?${params}`);
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to stream YouTube audio: ${response.status} ${response.statusText}`
-    );
-  }
-
-  return response;
-}
-
-/**
- * Stream audio-only content for a YouTube video as a ReadableStream.
- * This allows for more efficient streaming in environments that support it.
- */
-export async function streamYouTubeAudioReader(
+export async function getYouTubeAudioSignedUrl(
   videoId: string
-): Promise<ReadableStream<Uint8Array>> {
+): Promise<
+  paths["/api/youtube/audio"]["get"]["responses"]["200"]["content"]["application/json"]
+> {
   const params = new URLSearchParams({ videoId });
   const response = await fetch(`${API_HOST}/api/youtube/audio?${params}`);
-
   if (!response.ok) {
     throw new Error(
-      `Failed to stream YouTube audio: ${response.status} ${response.statusText}`
+      `Failed to get YouTube audio signed URL: ${response.status} ${response.statusText}`
     );
   }
-
-  // Return the ReadableStream from the response body
-  return response.body as ReadableStream<Uint8Array>;
+  return await response.json();
 }
