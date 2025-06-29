@@ -38,7 +38,7 @@ describe("YouTube Audio API", () => {
       this.timeout(60000);
 
       // Using a known short YouTube video (replace with a reliable test video)
-      const testVideoId = "dQw4w9WgXcQ"; // Rick Astley - Never Gonna Give You Up
+      const testVideoId = "npvNPORFXpc"; // Rick Astley - Never Gonna Give You Up
 
       const response = await request(app)
         .get("/api/youtube/audio")
@@ -58,7 +58,7 @@ describe("YouTube Audio API", () => {
     it("should properly stream data in chunks (not one large response)", async function () {
       this.timeout(60000);
 
-      const testVideoId = "dQw4w9WgXcQ";
+      const testVideoId = "npvNPORFXpc";
       let chunkCount = 0;
       let totalBytes = 0;
       let firstChunkTime = 0;

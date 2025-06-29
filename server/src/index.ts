@@ -88,6 +88,7 @@ import { randomUUID } from "crypto";
 import { sql } from "kysely";
 import { setupSwagger } from "./swagger";
 import fetch from "node-fetch";
+import ytdl from "@distube/ytdl-core";
 import youtubedl from "youtube-dl-exec";
 import { pipeline } from "node:stream/promises";
 
@@ -438,127 +439,86 @@ app.get("/api/youtube/audio", async (req, res) => {
     return void res.status(400).json({ error: "Invalid videoId format" });
   }
 
-  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  // declare namespace ProxyAgent {
+  //   export interface Options extends Agent.Options {
+  //     uri: string;
+  //     /**
+  //      * @deprecated use opts.token
+  //      */
+  //     auth?: string;
+  //     token?: string;
+  //     headers?: IncomingHttpHeaders;
+  //     requestTls?: buildConnector.BuildOptions;
+  //     proxyTls?: buildConnector.BuildOptions;
+  //     clientFactory?(origin: URL, opts: object): Dispatcher;
+  //     proxyTunnel?: boolean;
+  //   }
+  // }
+  const ytdlAgent = ytdl.createProxyAgent({
+    uri: `http://${username}-cc-${country}:${password}@${proxy}`,
+  });
+  const info = await ytdl.getInfo(videoId, {
+    agent: ytdlAgent,
+  });
+  const format = ytdl.chooseFormat(info.formats, {
+    quality: "highestaudio",
+    filter: "audioonly",
+  });
+
+  if (!format || !format.mimeType) {
+    return void res
+      .status(500)
+      .json({ error: "No suitable audio format found" });
+  }
 
   // Set headers for audio streaming
   res.setHeader("Content-Type", "audio/mpeg");
   res.setHeader("Transfer-Encoding", "chunked");
   res.setHeader("Accept-Ranges", "bytes");
-
-  let subprocess: any;
-  let isStreamingActive = true;
-
-  // Function to cleanup resources
-  const cleanup = () => {
-    isStreamingActive = false;
-    if (subprocess && !subprocess.killed) {
-      console.warn(
-        "Youtube-dl subprocess is still running and may not have exited cleanly"
-      );
-    }
-  };
+  res.setHeader("Content-Disposition", `inline; filename="${videoId}.webm"`);
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  // Do not set Content-Length when using Transfer-Encoding: chunked
+  // Set an alternative header to still prevent playback issues
+  if (format.contentLength) {
+    res.setHeader("Content-Length", format.contentLength);
+  }
 
   try {
-    // Use youtube-dl-exec to get the best audio format and stream it
-    subprocess = youtubedl.exec(
-      videoUrl,
-      {
-        format: "bestaudio[ext=m4a]/bestaudio/best",
-        output: "-",
-        quiet: true,
-        noWarnings: true,
-        preferFreeFormats: true,
-        limitRate: "100k",
-        proxy: `http://${username}-cc-${country}:${password}@${proxy}`,
-      },
-      {
-        timeout: 60000,
-        killSignal: "SIGKILL",
-        stdio: ["ignore", "pipe", "ignore"],
-      }
-    );
-
-    // Handle subprocess errors
-    subprocess.on("error", (error: Error) => {
-      console.error("YouTube audio streaming error:", error);
-      cleanup();
-      if (!res.headersSent) {
-        res.status(500).json({ error: "Failed to stream audio" });
-      }
+    const stream = ytdl(videoId, {
+      quality: "highestaudio",
+      filter: "audioonly",
+      agent: ytdlAgent,
     });
 
-    // Handle subprocess close
-    subprocess.on("close", (code: number | null, signal: string | null) => {
-      cleanup();
-      if (!isStreamingActive) {
-        return; // Already handled
-      }
-
-      if (code !== 0 && code !== null) {
-        console.error(`YouTube-dl process exited with code ${code}`);
-        if (!res.headersSent) {
-          res.status(500).json({ error: "Audio streaming failed" });
+    // Use pipeline to properly stream data from subprocess to response
+    pipeline(stream, res)
+      .then(() => {
+        console.log("Audio streaming completed successfully");
+      })
+      .catch((error: Error) => {
+        console.error("Pipeline error during audio streaming:", error);
+        if (!res.headersSent && !res.destroyed) {
+          res.status(500).json({ error: "Audio streaming pipeline error" });
         }
-      } else if (signal && signal !== "SIGKILL") {
-        console.log(`YouTube-dl process terminated with signal ${signal}`);
-        if (!res.headersSent) {
-          res.status(500).json({ error: "Audio streaming interrupted" });
-        }
-      }
-    });
+      });
 
     // Handle client disconnect
     req.on("close", () => {
       console.log("Client disconnected from audio stream");
-      cleanup();
     });
 
     // Handle response finish (when client stops receiving)
-    res.on("finish", () => {
-      cleanup();
-    });
+    res.on("finish", () => {});
 
     // Handle response error
     res.on("error", (error: Error) => {
       console.error("Response error during audio streaming:", error);
-      cleanup();
     });
-
-    // Pipe the audio data to the response using pipeline
-    if (subprocess.stdout) {
-      const stream = subprocess.stdout as NodeJS.ReadableStream;
-
-      // Use pipeline to properly stream data from subprocess to response
-      pipeline(stream, res)
-        .then(() => {
-          console.log("Audio streaming completed successfully");
-          cleanup();
-        })
-        .catch((error: Error) => {
-          console.error("Pipeline error during audio streaming:", error);
-          cleanup();
-          if (!res.headersSent && !res.destroyed) {
-            res.status(500).json({ error: "Audio streaming pipeline error" });
-          }
-        });
-    } else {
-      console.error("Failed to access subprocess stdout");
-      cleanup();
-      if (!res.headersSent) {
-        res.status(500).json({ error: "Failed to access audio stream" });
-      }
-      return;
-    }
-
-    // Handle stderr for logging
-    if (subprocess.stderr) {
-      subprocess.stderr.on("data", (data: any) => {
-        console.error("YouTube-dl stderr:", data.toString());
-      });
-    }
   } catch (error) {
     console.error("Failed to start YouTube audio streaming:", error);
-    cleanup();
     if (!res.headersSent) {
       res.status(500).json({ error: "Failed to start audio streaming" });
     }

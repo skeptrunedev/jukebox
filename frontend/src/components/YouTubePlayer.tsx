@@ -290,7 +290,7 @@ export const YouTubePlayer = () => {
               onClick={handleSeek}
             >
               <div
-                className="bg-blue-600 h-2 rounded-full transition-all duration-100"
+                className="bg-main h-2 rounded-full transition-all duration-100"
                 style={{
                   width:
                     duration > 0 ? `${(currentTime / duration) * 100}%` : "0%",
