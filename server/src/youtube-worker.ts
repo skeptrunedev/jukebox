@@ -58,9 +58,20 @@ async function getAndClaimNextSong() {
       .where("youtube_id", "is not", null)
       .where(
         ({ ref }) =>
-          sql`NOT EXISTS (SELECT 1 FROM song_youtube_status WHERE song_youtube_status.youtube_id = ${ref(
-            "songs.youtube_id"
-          )} AND song_youtube_status.status IN ('processing', 'completed', 'failed'))`
+          sql`
+        (
+          NOT EXISTS (
+            SELECT 1 FROM song_youtube_status 
+            WHERE song_youtube_status.youtube_id = ${ref("songs.youtube_id")}
+          )
+          OR
+          NOT EXISTS (
+            SELECT 1 FROM song_youtube_status 
+            WHERE song_youtube_status.youtube_id = ${ref("songs.youtube_id")}
+            AND song_youtube_status.status IN ('processing', 'completed', 'failed')
+          )
+        )
+        `
       )
       .distinct()
       .limit(1)
