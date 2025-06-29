@@ -161,28 +161,37 @@ async function workerLoop() {
                 throw new Error("No suitable audio format found");
               }
               const { PassThrough } = await import("stream");
-              const stream = ytdl(youtube_id, {
-                quality: "highestaudio",
-                filter: "audioonly",
-                agent: ytdlAgent,
-              });
-              // Add error handler to prevent uncaught stream errors
-              stream.on("error", (err) => {
-                throw err;
-              });
-              const pass = new PassThrough();
-              stream.pipe(pass);
               const s3Key = `youtube-audio/${youtube_id}.webm`;
-              await new Upload({
-                client: s3,
-                params: {
-                  Bucket: S3_BUCKET_NAME!,
-                  Key: s3Key,
-                  Body: pass,
-                  ContentType: "audio/webm",
-                  ACL: "public-read",
-                },
-              }).done();
+              await new Promise((resolve, reject) => {
+                const stream = ytdl(youtube_id, {
+                  quality: "highestaudio",
+                  filter: "audioonly",
+                  agent: ytdlAgent,
+                });
+                stream.on("error", (err) => {
+                  console.error(`Stream error for ${youtube_id}:`, err);
+                  reject(err);
+                });
+                const pass = new PassThrough();
+                stream.pipe(pass);
+                const upload = new Upload({
+                  client: s3,
+                  params: {
+                    Bucket: S3_BUCKET_NAME!,
+                    Key: s3Key,
+                    Body: pass,
+                    ContentType: "audio/webm",
+                    ACL: "public-read",
+                  },
+                });
+                upload
+                  .done()
+                  .then(() => resolve(undefined))
+                  .catch((err) => {
+                    console.error(`S3 upload error for ${youtube_id}:`, err);
+                    reject(err);
+                  });
+              });
               // Mark as completed
               await db
                 .updateTable("song_youtube_status")
