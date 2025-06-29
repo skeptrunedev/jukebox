@@ -5,7 +5,7 @@ FROM node:lts-slim
 RUN apt-get update && apt-get install -y python3 python3-pip make g++ libsqlite3-dev && rm -rf /var/lib/apt/lists/*
 
 # Install yt-dlp
-RUN pip3 install yt-dlp
+RUN pip3 install yt-dlp requests curl_cffi
 
 WORKDIR /app
 
@@ -21,4 +21,4 @@ RUN yarn build
 EXPOSE 3001
 
 # Run database migrations and start the server
-CMD ["sh", "-c", "yarn migrate && yarn start"]
+CMD ["sh", "-c", "yarn migrate && yarn start"]    

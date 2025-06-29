@@ -89,6 +89,15 @@ import { sql } from "kysely";
 import { setupSwagger } from "./swagger";
 import fetch from "node-fetch";
 import youtubedl from "youtube-dl-exec";
+import { HttpsProxyAgent } from "https-proxy-agent";
+
+const username = process.env.PROXY_USERNAME;
+const password = process.env.PROXY_PASSWORD;
+const country = process.env.PROXY_COUNTRY;
+const proxy = process.env.PROXY_HOST;
+const proxyAgent = new HttpsProxyAgent(
+  `http://${username}-cc-${country}:${password}@${proxy}`
+);
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -421,111 +430,145 @@ app.delete("/api/users/:id", async (req, res) => {
  *                   type: string
  */
 app.get("/api/youtube/audio", async (req, res) => {
+  const videoId = req.query.videoId as string;
+
+  if (!videoId) {
+    return void res.status(400).json({ error: "Missing videoId parameter" });
+  }
+
+  // Validate videoId format (basic YouTube video ID validation)
+  if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+    return void res.status(400).json({ error: "Invalid videoId format" });
+  }
+
+  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+  // Set headers for audio streaming
+  res.setHeader("Content-Type", "audio/mpeg");
+  res.setHeader("Transfer-Encoding", "chunked");
+  res.setHeader("Accept-Ranges", "bytes");
+
+  let subprocess: any;
+  let timeout: NodeJS.Timeout;
+  let isStreamingActive = true;
+
+  // Function to cleanup resources
+  const cleanup = () => {
+    isStreamingActive = false;
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+    if (subprocess && !subprocess.killed) {
+      try {
+        subprocess.kill("SIGTERM");
+      } catch (error) {
+        if (error instanceof Error && !error.message.includes("SIGTERM")) {
+          console.error("Error killing subprocess:", error);
+        }
+      }
+    }
+  };
+
   try {
-    const videoId = req.query.videoId as string;
-
-    if (!videoId) {
-      return void res.status(400).json({ error: "Missing videoId parameter" });
-    }
-
-    // Validate videoId format (basic YouTube video ID validation)
-    if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
-      return void res.status(400).json({ error: "Invalid videoId format" });
-    }
-
-    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-
-    // Set headers for audio streaming
-    res.setHeader("Content-Type", "audio/mpeg");
-    res.setHeader("Transfer-Encoding", "chunked");
-    res.setHeader("Accept-Ranges", "bytes");
-
     // Use youtube-dl-exec to get the best audio format and stream it
-    const subprocess = youtubedl.exec(videoUrl, {
+    subprocess = youtubedl.exec(videoUrl, {
       format: "bestaudio[ext=m4a]/bestaudio/best",
-      output: "-", // Output to stdout
+      output: "-",
       quiet: true,
       noWarnings: true,
       preferFreeFormats: true,
+      proxy: `http://${username}-cc-${country}:${password}@${proxy}`,
     });
 
     // Set a timeout to prevent hanging
-    const timeout = setTimeout(() => {
-      if (!subprocess.killed) {
+    timeout = setTimeout(() => {
+      if (isStreamingActive && subprocess && !subprocess.killed) {
         console.log("YouTube audio streaming timeout, killing subprocess");
-        subprocess.kill("SIGTERM");
+        cleanup();
       }
     }, 30000); // 30 second timeout
 
     // Handle subprocess errors
-    subprocess.on("error", (error) => {
+    subprocess.on("error", (error: Error) => {
       console.error("YouTube audio streaming error:", error);
+      cleanup();
       if (!res.headersSent) {
         res.status(500).json({ error: "Failed to stream audio" });
       }
     });
 
     // Handle subprocess close
-    subprocess.on("close", (code, signal) => {
-      clearTimeout(timeout); // Clear the timeout when process closes
+    subprocess.on("close", (code: number | null, signal: string | null) => {
+      cleanup();
+      if (!isStreamingActive) {
+        return; // Already handled
+      }
+
       if (code !== 0 && code !== null) {
         console.error(`YouTube-dl process exited with code ${code}`);
         if (!res.headersSent) {
           res.status(500).json({ error: "Audio streaming failed" });
         }
-      } else if (signal) {
+      } else if (signal && signal !== "SIGTERM") {
         console.log(`YouTube-dl process terminated with signal ${signal}`);
-        // Don't send error response for SIGTERM as it's expected when client disconnects
-        if (signal !== "SIGTERM" && !res.headersSent) {
+        if (!res.headersSent) {
           res.status(500).json({ error: "Audio streaming interrupted" });
         }
       }
+      // For SIGTERM, we don't send an error response as it's expected
     });
 
     // Handle client disconnect
     req.on("close", () => {
-      clearTimeout(timeout); // Clear the timeout when client disconnects
-      if (!subprocess.killed) {
-        subprocess.kill("SIGTERM");
-      }
+      console.log("Client disconnected from audio stream");
+      cleanup();
     });
 
     // Handle response finish (when client stops receiving)
     res.on("finish", () => {
-      clearTimeout(timeout); // Clear the timeout when response finishes
-      if (!subprocess.killed) {
-        subprocess.kill("SIGTERM");
-      }
+      cleanup();
+    });
+
+    // Handle response error
+    res.on("error", (error: Error) => {
+      console.error("Response error during audio streaming:", error);
+      cleanup();
     });
 
     // Pipe the audio data to the response
     if (subprocess.stdout) {
       subprocess.stdout.pipe(res);
+
+      // Handle stdout errors
+      subprocess.stdout.on("error", (error: Error) => {
+        console.error("Stdout pipe error:", error);
+        cleanup();
+        if (!res.headersSent) {
+          res.status(500).json({ error: "Audio streaming pipe error" });
+        }
+      });
     } else {
-      throw new Error("Failed to access subprocess stdout");
+      console.error("Failed to access subprocess stdout");
+      cleanup();
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Failed to access audio stream" });
+      }
+      return;
     }
 
     // Handle stderr for logging
     if (subprocess.stderr) {
-      subprocess.stderr.on("data", (data) => {
+      subprocess.stderr.on("data", (data: any) => {
         console.error("YouTube-dl stderr:", data.toString());
       });
     }
   } catch (error) {
-    console.error("YouTube audio route error:", error);
+    console.error("Failed to start YouTube audio streaming:", error);
+    cleanup();
     if (!res.headersSent) {
-      // Handle specific ChildProcessError
-      if (
-        error &&
-        typeof error === "object" &&
-        "name" in error &&
-        error.name === "ChildProcessError"
-      ) {
-        res.status(500).json({ error: "Audio extraction failed" });
-      } else {
-        res.status(500).json({ error: (error as Error).message });
-      }
+      res.status(500).json({ error: "Failed to start audio streaming" });
     }
+    return;
   }
 });
 
