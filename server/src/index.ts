@@ -799,45 +799,19 @@ app.delete("/api/boxes/:id", async (req, res, _next: NextFunction) => {
 
 /**
  * @openapi
- * /api/songs:
- *   get:
- *     tags:
- *       - Songs
- *     summary: Get all songs
- *     responses:
- *       200:
- *         description: A list of songs
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Song'
- */
-app.get("/api/songs", async (req, res, _next: NextFunction) => {
-  try {
-    const songs = await db.selectFrom("songs").selectAll().execute();
-    res.json(songs);
-  } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
-  }
-});
-
-/**
- * @openapi
  * /api/songs/by-ids:
  *   get:
  *     tags:
  *       - Songs
- *     summary: Get songs by multiple IDs
+ *     summary: Get songs by multiple IDs or YouTube IDs
  *     parameters:
  *       - in: query
  *         name: ids
  *         required: true
  *         schema:
  *           type: string
- *           description: Comma-separated list of song IDs
- *         example: "1,2,3"
+ *           description: Comma-separated list of song IDs or YouTube IDs
+ *         example: "1,2,3,abc123xyz78"
  *     responses:
  *       200:
  *         description: A list of songs matching the provided IDs
@@ -857,7 +831,7 @@ app.get("/api/songs/by-ids", async (req, res, _next: NextFunction) => {
     if (!idsParam || typeof idsParam !== "string") {
       return void res.status(400).json({
         error:
-          "Missing or invalid 'ids' parameter. Expected comma-separated list of song IDs.",
+          "Missing or invalid 'ids' parameter. Expected comma-separated list of song IDs or YouTube IDs.",
       });
     }
 
@@ -870,52 +844,16 @@ app.get("/api/songs/by-ids", async (req, res, _next: NextFunction) => {
       return void res.status(400).json({ error: "No valid IDs provided" });
     }
 
+    // Query for songs where id or youtube_id matches any of the provided ids
     const songs = await db
       .selectFrom("songs")
       .selectAll()
-      .where("id", "in", ids)
+      .where(({ or, eb }) =>
+        or([eb("id", "in", ids), eb("youtube_id", "in", ids)])
+      )
       .execute();
 
     res.json(songs);
-  } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
-  }
-});
-
-/**
- * @openapi
- * /api/songs/{id}:
- *   get:
- *     tags:
- *       - Songs
- *     summary: Get a song by ID
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: A song object
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Song'
- *       404:
- *         description: Song not found
- */
-app.get("/api/songs/:id", async (req, res, _next: NextFunction) => {
-  try {
-    const song = await db
-      .selectFrom("songs")
-      .selectAll()
-      .where("id", "=", req.params.id)
-      .executeTakeFirst();
-    if (!song) {
-      return void res.status(404).json({ error: "Song not found" });
-    }
-    res.json(song);
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }

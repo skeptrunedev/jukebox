@@ -44,10 +44,6 @@ export interface JukeboxContextValue {
     thumbnail_url: string;
     duration: number;
   }) => Promise<void>;
-  updateStatus: (
-    songId: string,
-    status: "queued" | "playing" | "played"
-  ) => Promise<void>;
   updateUser: (data: {
     username?: string;
     fingerprint?: string;
@@ -64,28 +60,6 @@ export interface JukeboxContextValue {
   hasNext: boolean;
   user?: User;
 }
-
-// Helper function to check if two SongRow arrays are equal
-const areSongRowsEqual = (prev: SongRow[], next: SongRow[]): boolean => {
-  if (prev.length !== next.length) return false;
-
-  return prev.every((prevRow, index) => {
-    const nextRow = next[index];
-    if (!nextRow) return false;
-
-    return (
-      prevRow.id === nextRow.id &&
-      prevRow.position === nextRow.position &&
-      prevRow.title === nextRow.title &&
-      prevRow.artist === nextRow.artist &&
-      prevRow.youtube_id === nextRow.youtube_id &&
-      prevRow.youtube_url === nextRow.youtube_url &&
-      prevRow.thumbnail_url === nextRow.thumbnail_url &&
-      prevRow.duration === nextRow.duration &&
-      prevRow.status === nextRow.status
-    );
-  });
-};
 
 export function JukeboxProvider({ children }: { children: ReactNode }) {
   const { boxSlug } = useParams<{ boxSlug: string }>();
@@ -165,10 +139,26 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
         })
         .filter(
           (row): row is NonNullable<typeof row> => row !== null
-        ) as SongRow[]; // Only update state if the data has actually changed
+        ) as SongRow[];
       setRows((prevRows) => {
-        // Use helper function for deep comparison
-        return areSongRowsEqual(prevRows, newSongRows) ? prevRows : newSongRows;
+        return newSongRows.map((newRow, idx) => {
+          const prevRow = prevRows[idx];
+          if (
+            prevRow &&
+            prevRow.id === newRow.id &&
+            prevRow.position === newRow.position &&
+            prevRow.title === newRow.title &&
+            prevRow.artist === newRow.artist &&
+            prevRow.youtube_id === newRow.youtube_id &&
+            prevRow.youtube_url === newRow.youtube_url &&
+            prevRow.thumbnail_url === newRow.thumbnail_url &&
+            prevRow.duration === newRow.duration &&
+            prevRow.status === newRow.status
+          ) {
+            return prevRow; // keep reference if unchanged
+          }
+          return newRow;
+        });
       });
 
       // set the current song index to the first playing song or the first queued song
@@ -176,7 +166,9 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
         (row) => row.status === "playing" || row.status === "queued"
       );
       if (playingIndex !== -1 && playingIndex) {
-        setCurrentSongIndex(playingIndex);
+        setCurrentSongIndex((prevIndex) =>
+          prevIndex !== playingIndex ? playingIndex : prevIndex
+        );
       }
     } catch (error) {
       console.error("Error loading box songs:", error);
@@ -263,7 +255,17 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
     }) => {
       if (!boxSlug || !user?.id) return;
       try {
-        const song = await createSong(songData);
+        let song;
+        try {
+          const foundSongs = await getSongsByIds([songData.youtube_id]);
+          if (foundSongs && foundSongs.length > 0) {
+            song = foundSongs[0];
+          } else {
+            song = await createSong(songData);
+          }
+        } catch {
+          song = await createSong(songData);
+        }
         const relation = await createBoxSong({
           box_id: boxSlug,
           song_id: song.id || "",
@@ -298,20 +300,6 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
       }
     },
     [boxSlug, user]
-  );
-
-  const updateStatus = useCallback(
-    async (songId: string, status: "queued" | "playing" | "played") => {
-      try {
-        await updateBoxSong(songId, { status });
-        setRows((prevRows) =>
-          prevRows.map((row) => (row.id === songId ? { ...row, status } : row))
-        );
-      } catch (error) {
-        console.error("Error updating song status:", error);
-      }
-    },
-    []
   );
 
   const updateUser = useCallback(
@@ -383,7 +371,6 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
         page,
         setPage,
         addSong,
-        updateStatus,
         currentSongIndex,
         setCurrentSongIndex,
         goToPrevious,

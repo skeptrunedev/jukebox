@@ -9,6 +9,7 @@ import {
   cleanYouTubeTitle,
 } from "@/lib/youtube";
 import { searchYouTube } from "@/sdk";
+import { useJukebox } from "@/hooks/useJukeboxContext";
 
 interface YouTubeSearchResult {
   id: string;
@@ -31,6 +32,7 @@ interface SongSearchProps {
 }
 
 export default function SongSearch({ onSongSelect }: SongSearchProps) {
+  const { songs } = useJukebox();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<YouTubeSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -135,7 +137,6 @@ export default function SongSearch({ onSongSelect }: SongSearchProps) {
             placeholder="Search for songs on YouTube..."
             value={query}
             onChange={handleInputChange}
-            className="pl-10"
           />
         </div>
         {isSearching && (
@@ -155,53 +156,57 @@ export default function SongSearch({ onSongSelect }: SongSearchProps) {
         <div className="space-y-2">
           <h3 className="font-semibold text-lg">Search Results</h3>
           <div className="grid gap-3 max-h-96 overflow-y-auto scrollbar">
-            {results.map((result) => (
-              <Card key={result.id} className="p-0">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={result.thumbnail}
-                        alt={result.title}
-                        className="w-16 h-12 object-cover rounded"
-                      />
-                      <div className="min-w-0">
-                        <h4
-                          className="font-medium text-sm text-wrap"
-                          title={result.title}
-                          dangerouslySetInnerHTML={{ __html: result.title }}
+            {results
+              .filter(
+                (result) => !songs.some((song) => song.youtube_id === result.id)
+              )
+              .map((result) => (
+                <Card key={result.id} className="p-0">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={result.thumbnail}
+                          alt={result.title}
+                          className="w-16 h-12 object-cover rounded"
                         />
-                        <p
-                          className="text-xs text-gray-600 text-wrap"
-                          title={result.channelTitle}
-                          dangerouslySetInnerHTML={{
-                            __html: result.channelTitle,
-                          }}
-                        />
-                        <p className="text-xs text-gray-500">
-                          {formatDuration(
-                            parseYouTubeDuration(result.duration)
-                          )}
-                        </p>
+                        <div className="min-w-0">
+                          <h4
+                            className="font-medium text-sm text-wrap"
+                            title={result.title}
+                            dangerouslySetInnerHTML={{ __html: result.title }}
+                          />
+                          <p
+                            className="text-xs text-gray-600 text-wrap"
+                            title={result.channelTitle}
+                            dangerouslySetInnerHTML={{
+                              __html: result.channelTitle,
+                            }}
+                          />
+                          <p className="text-xs text-gray-500">
+                            {formatDuration(
+                              parseYouTubeDuration(result.duration)
+                            )}
+                          </p>
+                        </div>
                       </div>
+                      <Button
+                        size="sm"
+                        onClick={() => handleSongSelect(result)}
+                        disabled={addingIds.has(result.id)}
+                        className="flex items-center gap-1"
+                      >
+                        {addingIds.has(result.id) ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Plus className="h-3 w-3" />
+                        )}
+                        {addingIds.has(result.id) ? "Adding..." : "Add"}
+                      </Button>
                     </div>
-                    <Button
-                      size="sm"
-                      onClick={() => handleSongSelect(result)}
-                      disabled={addingIds.has(result.id)}
-                      className="flex items-center gap-1"
-                    >
-                      {addingIds.has(result.id) ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Plus className="h-3 w-3" />
-                      )}
-                      {addingIds.has(result.id) ? "Adding..." : "Add"}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              ))}
           </div>
         </div>
       )}

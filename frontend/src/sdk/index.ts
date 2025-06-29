@@ -87,19 +87,6 @@ export async function getBoxSongs(
 }
 
 /**
- * Fetch all songs.
- */
-export async function getSongs(): Promise<components["schemas"]["Song"][]> {
-  const response = await fetch(`${API_HOST}/api/songs`);
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch songs: ${response.status} ${response.statusText}`
-    );
-  }
-  return await response.json();
-}
-
-/**
  * Create a new user.
  */
 export async function createUser(

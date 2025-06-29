@@ -498,119 +498,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/songs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all songs */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description A list of songs */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Song"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Create a new song */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        title: string;
-                        artist?: string;
-                        youtube_id?: string;
-                        youtube_url?: string;
-                        duration?: number;
-                        thumbnail_url?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Created song */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Song"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/songs/by-ids": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get songs by multiple IDs */
-        get: {
-            parameters: {
-                query: {
-                    /** @example 1,2,3 */
-                    ids: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description A list of songs matching the provided IDs */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Song"][];
-                    };
-                };
-                /** @description Invalid or missing IDs parameter */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/songs/{id}": {
         parameters: {
             query?: never;
@@ -618,12 +505,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a song by ID */
+        /** Get a song by ID or YouTube ID */
         get: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
+                    /** @description Song ID or YouTube video ID */
                     id: string;
                 };
                 cookie?: never;
@@ -718,6 +606,99 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/songs/by-ids": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get songs by multiple IDs or YouTube IDs */
+        get: {
+            parameters: {
+                query: {
+                    /** @example 1,2,3,abc123xyz78 */
+                    ids: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description A list of songs matching the provided IDs */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Song"][];
+                    };
+                };
+                /** @description Invalid or missing IDs parameter */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/songs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a new song */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        title: string;
+                        artist?: string;
+                        youtube_id?: string;
+                        youtube_url?: string;
+                        duration?: number;
+                        thumbnail_url?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Created song */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Song"];
+                    };
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;

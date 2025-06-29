@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Play, Pause, SkipForward, SkipBack } from "lucide-react";
 import { useJukebox } from "@/hooks/useJukeboxContext";
 import { updateBoxSong, getYouTubeAudioSignedUrl } from "@/sdk";
+import type { SongRow } from "@/lib/player";
 
 export const YouTubePlayer = () => {
   const { songs, currentSongIndex, goToPrevious, goToNext } = useJukebox();
@@ -13,15 +14,26 @@ export const YouTubePlayer = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [currentSong, setCurrentSong] = useState<SongRow | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const seekTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const autoplayAttemptedRef = useRef(false);
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastPolledIdRef = useRef<string | null>(null);
 
-  const currentSong = useMemo(() => {
-    return songs[currentSongIndex];
-  }, [songs, currentSongIndex]);
+  useEffect(() => {
+    if (currentSongIndex >= 0 && currentSongIndex < songs.length) {
+      const nextSong = songs[currentSongIndex] as SongRow;
+      setCurrentSong((prev) => {
+        if (!prev || prev.id !== nextSong.id) {
+          return nextSong;
+        }
+        return prev;
+      });
+    } else {
+      setCurrentSong(null);
+    }
+  }, [currentSongIndex, songs]);
 
   // Poll for YouTube audio signed URL
   useEffect(() => {
@@ -75,11 +87,6 @@ export const YouTubePlayer = () => {
   }, [currentSong]);
 
   useEffect(() => {
-    if (songs.length === 0) return;
-
-    const currentSong = songs[currentSongIndex];
-    if (!currentSong || !currentSong.youtube_id) return;
-
     const audio = audioRef.current;
     if (!audio) {
       const newAudio = new Audio();
@@ -91,7 +98,7 @@ export const YouTubePlayer = () => {
     if (mediaUrl && audioRef.current && audioRef.current.src !== mediaUrl) {
       autoplayAttemptedRef.current = false;
       audioRef.current.src = mediaUrl;
-      setDuration(currentSong.duration ?? 0);
+      setDuration(currentSong?.duration ?? 0);
       setCurrentTime(0);
       setIsPlaying(false);
       setIsLoading(true);
@@ -99,7 +106,7 @@ export const YouTubePlayer = () => {
       // No media URL yet, waiting for polling
       setIsLoading(true);
     }
-  }, [songs, currentSongIndex, mediaUrl]);
+  }, [mediaUrl, currentSong]);
 
   // Audio event listeners effect
   useEffect(() => {
@@ -111,7 +118,6 @@ export const YouTubePlayer = () => {
     };
 
     const handleLoadedMetadata = () => {
-      console.log("Audio metadata loaded:", audio.duration);
       setDuration(audio.duration);
       if (isNaN(audio.duration) || audio.duration === 0) {
         console.warn("Invalid audio duration detected");
@@ -313,7 +319,7 @@ export const YouTubePlayer = () => {
             {currentSong.thumbnail_url && (
               <img
                 src={currentSong.thumbnail_url}
-                alt={currentSong.title}
+                alt={currentSong?.title ?? "Song Thumbnail"}
                 className="w-16 h-12 object-cover rounded"
               />
             )}
