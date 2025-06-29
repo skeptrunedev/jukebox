@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "description": "Backend server for the application",
   "license": "MIT",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node dist/src/index.js",
     "start:worker": "node dist/src/youtube-worker.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "dev:worker": "ts-node-dev --respawn --transpile-only src/youtube-worker.ts",
