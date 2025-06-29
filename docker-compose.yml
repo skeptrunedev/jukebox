@@ -6,7 +6,7 @@ services:
     ports:
       - "${SERVER_PORT}:${SERVER_INTERNAL_PORT}"
     env_file:
-      - server/.env
+      - .env
     environment:
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
       PORT: ${PORT}
@@ -29,7 +29,7 @@ services:
       context: ./server
       dockerfile: Dockerfile.youtube-worker
     env_file:
-      - server/.env
+      - .env
     environment:
       DB_FILE: ${DB_FILE}
       PROXY_USERNAME: ${PROXY_USERNAME}
@@ -54,6 +54,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    env_file:
+      - .env
     ports:
       - "${FRONTEND_PORT}:${FRONTEND_INTERNAL_PORT}"
     environment:
