@@ -1447,6 +1447,17 @@ app.put("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
     const { box_id, song_id, user_id, position, status } = req.body;
     const updates: Record<string, unknown> = {};
 
+    // Get the current relation
+    const currentRel = await db
+      .selectFrom("box_songs")
+      .selectAll()
+      .where("id", "=", req.params.id)
+      .executeTakeFirst();
+
+    if (!currentRel) {
+      return void res.status(404).json({ error: "Relation not found" });
+    }
+
     // Validate box_id if provided
     if (box_id !== undefined) {
       const box = await db
@@ -1473,7 +1484,6 @@ app.put("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
       updates.song_id = song_id;
     }
 
-    if (position !== undefined) updates.position = position;
     if (status !== undefined) {
       if (!["queued", "playing", "played"].includes(status as string)) {
         return void res.status(400).json({ error: "Invalid status" });
@@ -1492,6 +1502,58 @@ app.put("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
         return void res.status(400).json({ error: "User not found" });
       }
       updates.user_id = user_id;
+    }
+
+    // Handle position change
+    if (
+      position !== undefined &&
+      typeof position === "number" &&
+      position !== currentRel.position
+    ) {
+      // Only allow moving within the same box
+      const boxId = updates.box_id ?? currentRel.box_id;
+
+      // Get min/max position in the box
+      if (typeof boxId !== "string") {
+        return void res.status(400).json({ error: "Invalid box_id" });
+      }
+      const minMax = await db
+        .selectFrom("box_songs")
+        .select([
+          sql<number>`MIN(position)`.as("min"),
+          sql<number>`MAX(position)`.as("max"),
+        ])
+        .where("box_id", "=", boxId)
+        .executeTakeFirst();
+
+      const minPos = minMax?.min ?? 1;
+      const maxPos = minMax?.max ?? 1;
+      let newPosition = Math.max(minPos, Math.min(position, maxPos));
+
+      // If moving up (to a lower position number)
+      if (newPosition < currentRel.position) {
+        // Shift all songs between newPosition and currentRel.position - 1 down (+1)
+        await db
+          .updateTable("box_songs")
+          .set({ position: sql`position + 1` })
+          .where("box_id", "=", boxId)
+          .where("position", ">=", newPosition)
+          .where("position", "<", currentRel.position)
+          .execute();
+      }
+      // If moving down (to a higher position number)
+      else if (newPosition > currentRel.position) {
+        // Shift all songs between currentRel.position + 1 and newPosition up (-1)
+        await db
+          .updateTable("box_songs")
+          .set({ position: sql`position - 1` })
+          .where("box_id", "=", boxId)
+          .where("position", "<=", newPosition)
+          .where("position", ">", currentRel.position)
+          .execute();
+      }
+
+      updates.position = newPosition;
     }
 
     const updatedRows = await db
