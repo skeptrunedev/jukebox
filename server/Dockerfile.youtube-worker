@@ -20,4 +20,4 @@ COPY . .
 RUN yarn build
 
 # Run database migrations and start the YouTube worker
-CMD ["sh", "-c", "yarn migrate && yarn start:worker"]
+CMD ["sh", "-c", "yarn start:worker"]
