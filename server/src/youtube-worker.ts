@@ -166,6 +166,10 @@ async function workerLoop() {
                 filter: "audioonly",
                 agent: ytdlAgent,
               });
+              // Add error handler to prevent uncaught stream errors
+              stream.on("error", (err) => {
+                throw err;
+              });
               const pass = new PassThrough();
               stream.pipe(pass);
               const s3Key = `youtube-audio/${youtube_id}.webm`;
