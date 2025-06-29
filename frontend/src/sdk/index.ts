@@ -299,3 +299,23 @@ export async function streamYouTubeAudio(videoId: string): Promise<Response> {
 
   return response;
 }
+
+/**
+ * Stream audio-only content for a YouTube video as a ReadableStream.
+ * This allows for more efficient streaming in environments that support it.
+ */
+export async function streamYouTubeAudioReader(
+  videoId: string
+): Promise<ReadableStream<Uint8Array>> {
+  const params = new URLSearchParams({ videoId });
+  const response = await fetch(`${API_HOST}/api/youtube/audio?${params}`);
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to stream YouTube audio: ${response.status} ${response.statusText}`
+    );
+  }
+
+  // Return the ReadableStream from the response body
+  return response.body as ReadableStream<Uint8Array>;
+}

@@ -89,15 +89,12 @@ import { sql } from "kysely";
 import { setupSwagger } from "./swagger";
 import fetch from "node-fetch";
 import youtubedl from "youtube-dl-exec";
-import { HttpsProxyAgent } from "https-proxy-agent";
+import { pipeline } from "node:stream/promises";
 
 const username = process.env.PROXY_USERNAME;
 const password = process.env.PROXY_PASSWORD;
 const country = process.env.PROXY_COUNTRY;
 const proxy = process.env.PROXY_HOST;
-const proxyAgent = new HttpsProxyAgent(
-  `http://${username}-cc-${country}:${password}@${proxy}`
-);
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -449,44 +446,37 @@ app.get("/api/youtube/audio", async (req, res) => {
   res.setHeader("Accept-Ranges", "bytes");
 
   let subprocess: any;
-  let timeout: NodeJS.Timeout;
   let isStreamingActive = true;
 
   // Function to cleanup resources
   const cleanup = () => {
     isStreamingActive = false;
-    if (timeout) {
-      clearTimeout(timeout);
-    }
     if (subprocess && !subprocess.killed) {
-      try {
-        subprocess.kill("SIGTERM");
-      } catch (error) {
-        if (error instanceof Error && !error.message.includes("SIGTERM")) {
-          console.error("Error killing subprocess:", error);
-        }
-      }
+      console.warn(
+        "Youtube-dl subprocess is still running and may not have exited cleanly"
+      );
     }
   };
 
   try {
     // Use youtube-dl-exec to get the best audio format and stream it
-    subprocess = youtubedl.exec(videoUrl, {
-      format: "bestaudio[ext=m4a]/bestaudio/best",
-      output: "-",
-      quiet: true,
-      noWarnings: true,
-      preferFreeFormats: true,
-      proxy: `http://${username}-cc-${country}:${password}@${proxy}`,
-    });
-
-    // Set a timeout to prevent hanging
-    timeout = setTimeout(() => {
-      if (isStreamingActive && subprocess && !subprocess.killed) {
-        console.log("YouTube audio streaming timeout, killing subprocess");
-        cleanup();
+    subprocess = youtubedl.exec(
+      videoUrl,
+      {
+        format: "bestaudio[ext=m4a]/bestaudio/best",
+        output: "-",
+        quiet: true,
+        noWarnings: true,
+        preferFreeFormats: true,
+        limitRate: "100k",
+        proxy: `http://${username}-cc-${country}:${password}@${proxy}`,
+      },
+      {
+        timeout: 60000,
+        killSignal: "SIGKILL",
+        stdio: ["ignore", "pipe", "ignore"],
       }
-    }, 30000); // 30 second timeout
+    );
 
     // Handle subprocess errors
     subprocess.on("error", (error: Error) => {
@@ -509,13 +499,12 @@ app.get("/api/youtube/audio", async (req, res) => {
         if (!res.headersSent) {
           res.status(500).json({ error: "Audio streaming failed" });
         }
-      } else if (signal && signal !== "SIGTERM") {
+      } else if (signal && signal !== "SIGKILL") {
         console.log(`YouTube-dl process terminated with signal ${signal}`);
         if (!res.headersSent) {
           res.status(500).json({ error: "Audio streaming interrupted" });
         }
       }
-      // For SIGTERM, we don't send an error response as it's expected
     });
 
     // Handle client disconnect
@@ -535,18 +524,23 @@ app.get("/api/youtube/audio", async (req, res) => {
       cleanup();
     });
 
-    // Pipe the audio data to the response
+    // Pipe the audio data to the response using pipeline
     if (subprocess.stdout) {
-      subprocess.stdout.pipe(res);
+      const stream = subprocess.stdout as NodeJS.ReadableStream;
 
-      // Handle stdout errors
-      subprocess.stdout.on("error", (error: Error) => {
-        console.error("Stdout pipe error:", error);
-        cleanup();
-        if (!res.headersSent) {
-          res.status(500).json({ error: "Audio streaming pipe error" });
-        }
-      });
+      // Use pipeline to properly stream data from subprocess to response
+      pipeline(stream, res)
+        .then(() => {
+          console.log("Audio streaming completed successfully");
+          cleanup();
+        })
+        .catch((error: Error) => {
+          console.error("Pipeline error during audio streaming:", error);
+          cleanup();
+          if (!res.headersSent && !res.destroyed) {
+            res.status(500).json({ error: "Audio streaming pipeline error" });
+          }
+        });
     } else {
       console.error("Failed to access subprocess stdout");
       cleanup();
