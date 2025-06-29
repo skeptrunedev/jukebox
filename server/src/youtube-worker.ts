@@ -93,6 +93,22 @@ async function getAndClaimNextSong() {
   });
 }
 
+async function getRetryCount(youtube_id: string) {
+  const statusRow = await db
+    .selectFrom("song_youtube_status")
+    .select(["retry_count"])
+    .where("youtube_id", "=", youtube_id)
+    .where("status", "=", "processing")
+    .executeTakeFirst();
+  return statusRow?.retry_count ?? 0;
+}
+
+function getTimeoutMs(retryCount: number) {
+  if (retryCount === 0) return 1 * 60 * 1000;
+  if (retryCount === 1) return 2 * 60 * 1000;
+  return 3 * 60 * 1000;
+}
+
 async function workerLoop() {
   while (true) {
     try {
@@ -103,60 +119,70 @@ async function workerLoop() {
       }
       const youtube_id = song.youtube_id;
       if (!youtube_id) continue;
-      // Download and upload logic here and log timestamp
       console.log(
         `Claimed and processing song with youtube_id: ${youtube_id}`,
         new Date().toISOString()
       );
       try {
-        const ytdlAgent = proxy
-          ? ytdl.createProxyAgent({
-              uri: `http://${username}-cc-${country}:${password}@${proxy}`,
-            })
-          : undefined;
-        const info = await ytdl.getInfo(youtube_id, { agent: ytdlAgent });
-        const format = ytdl.chooseFormat(info.formats, {
-          quality: "highestaudio",
-          filter: "audioonly",
-        });
-        if (!format || !format.mimeType) {
-          throw new Error("No suitable audio format found");
-        }
-        const { PassThrough, pipeline } = await import("stream");
-        promisify(pipeline);
-        const stream = ytdl(youtube_id, {
-          quality: "highestaudio",
-          filter: "audioonly",
-          agent: ytdlAgent,
-        });
-        const pass = new PassThrough();
-        stream.pipe(pass);
-        const s3Key = `youtube-audio/${youtube_id}.webm`;
-        await new Upload({
-          client: s3,
-          params: {
-            Bucket: S3_BUCKET_NAME!,
-            Key: s3Key,
-            Body: pass,
-            ContentType: "audio/webm",
-            ACL: "public-read",
-          },
-        }).done();
-        // Mark as completed
-        await db
-          .updateTable("song_youtube_status")
-          .set({
-            status: "completed",
-            updated_at: new Date().toISOString(),
-            error_message: null,
-          })
-          .where("youtube_id", "=", youtube_id)
-          .where("status", "=", "processing")
-          .execute();
-        console.log(`Uploaded ${youtube_id} to S3 as ${s3Key}`);
+        const retryCount = await getRetryCount(youtube_id);
+        const timeoutMs = getTimeoutMs(retryCount);
+
+        await Promise.race([
+          (async () => {
+            const ytdlAgent = proxy
+              ? ytdl.createProxyAgent({
+                  uri: `http://${username}-cc-${country}:${password}@${proxy}`,
+                })
+              : undefined;
+            const info = await ytdl.getInfo(youtube_id, { agent: ytdlAgent });
+            const format = ytdl.chooseFormat(info.formats, {
+              quality: "highestaudio",
+              filter: "audioonly",
+            });
+            if (!format || !format.mimeType) {
+              throw new Error("No suitable audio format found");
+            }
+            const { PassThrough } = await import("stream");
+            const stream = ytdl(youtube_id, {
+              quality: "highestaudio",
+              filter: "audioonly",
+              agent: ytdlAgent,
+            });
+            const pass = new PassThrough();
+            stream.pipe(pass);
+            const s3Key = `youtube-audio/${youtube_id}.webm`;
+            await new Upload({
+              client: s3,
+              params: {
+                Bucket: S3_BUCKET_NAME!,
+                Key: s3Key,
+                Body: pass,
+                ContentType: "audio/webm",
+                ACL: "public-read",
+              },
+            }).done();
+            // Mark as completed
+            await db
+              .updateTable("song_youtube_status")
+              .set({
+                status: "completed",
+                updated_at: new Date().toISOString(),
+                error_message: null,
+              })
+              .where("youtube_id", "=", youtube_id)
+              .where("status", "=", "processing")
+              .execute();
+            console.log(`Uploaded ${youtube_id} to S3 as ${s3Key}`);
+          })(),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Processing timed out")),
+              timeoutMs
+            )
+          ),
+        ]);
       } catch (err: any) {
         console.error("Download/upload error for", youtube_id, err);
-        // Get current retry_count
         const statusRow = await db
           .selectFrom("song_youtube_status")
           .select(["retry_count"])
@@ -165,7 +191,6 @@ async function workerLoop() {
           .executeTakeFirst();
         const currentRetry = statusRow?.retry_count ?? 0;
         if (currentRetry < 2) {
-          // Increment retry_count and set back to pending
           await db
             .updateTable("song_youtube_status")
             .set({
@@ -178,7 +203,6 @@ async function workerLoop() {
             .where("status", "=", "processing")
             .execute();
         } else {
-          // Mark as failed after 3 attempts
           await db
             .updateTable("song_youtube_status")
             .set({

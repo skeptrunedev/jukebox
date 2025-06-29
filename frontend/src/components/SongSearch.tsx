@@ -107,7 +107,7 @@ export default function SongSearch({ onSongSelect }: SongSearchProps) {
         .replace(/\s*(VEVO|Records|Music|Official)\s*/gi, "")
         .trim();
 
-      await onSongSelect({
+      onSongSelect({
         title: cleanTitle,
         artist: possibleArtist || channelTitle,
         youtube_id: result.id,
@@ -131,6 +131,7 @@ export default function SongSearch({ onSongSelect }: SongSearchProps) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
+            id="song-search"
             placeholder="Search for songs on YouTube..."
             value={query}
             onChange={handleInputChange}

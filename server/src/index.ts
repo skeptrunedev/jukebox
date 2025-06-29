@@ -1307,7 +1307,6 @@ app.post("/api/box_songs", async (req, res, _next: NextFunction) => {
       .selectFrom("box_songs")
       .selectAll()
       .where("box_id", "=", box_id)
-      .where("status", "=", "queued")
       .orderBy("position", "asc")
       .execute();
 
@@ -1354,7 +1353,8 @@ app.post("/api/box_songs", async (req, res, _next: NextFunction) => {
 });
 
 /**
- * Find the fairest position to insert a new song using round-robin logic
+ * Find the fairest position to insert a new song using round-robin logic.
+ * If the same user adds a song twice in a row, their second song will always go after the first instead of before.
  */
 function findFairPosition(queuedSongs: any[], newUserId: string): number {
   if (queuedSongs.length === 0) return 1;
