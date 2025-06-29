@@ -157,7 +157,7 @@ export function Layout({ children }: LayoutProps) {
     <>
       <div className="not-prose min-h-[100dvh] bg-[linear-gradient(to_right,#80808033_1px,transparent_1px),linear-gradient(to_bottom,#80808033_1px,transparent_1px)] [background-size:70px_79px] bg-secondary-background flex flex-col">
         <nav className="mx-auto flex h-[70px] w-full items-center border-b-4 border-border bg-secondary-background px-5">
-          <div className="mx-auto flex w-[1300px] text-foreground max-w-full items-center justify-between">
+          <div className="mx-auto flex w-[1300px] text-foreground max-w-full items-center justify-between sm:grid sm:grid-cols-3">
             <div className="flex items-center">
               <a
                 className={`size-9 rounded-base flex text-main-foreground border-2 border-black items-center justify-center font-heading ${
@@ -174,11 +174,11 @@ export function Layout({ children }: LayoutProps) {
             </div>
 
             {/* Center content */}
-            <div className="flex items-center sm:ml-22">
+            <div className="flex items-center justify-center">
               {renderNavbarCenter()}
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 justify-end">
               <Button asChild className="bg-white">
                 <a
                   href="https://github.com/skeptrunedev/jukebox"
