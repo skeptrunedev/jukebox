@@ -42,8 +42,8 @@ export default function HomePage() {
   };
 
   return (
-    <div className="bg-background/40">
-      <div className="flex flex-1 min-h-[calc(95dvh-70px)] items-center justify-center px-5 w-full">
+    <div>
+      <div className="flex flex-1 min-h-[calc(98dvh-70px)] items-center justify-center px-5 w-full bg-background/40 pb-8">
         <div className="flex flex-col justify-center lg:flex-row gap-2 sm:gap-8 mx-auto w-[1300px] max-w-full items-center">
           {/* Left: Marketing Text (raw, not in a Card) */}
           <div className="w-fit p-4 text-center md:px-14 lg:px-0 lg:text-left lg:w-fit flex flex-col items-center lg:items-start">
@@ -93,17 +93,22 @@ export default function HomePage() {
               {/* Feature List (desktop only) */}
               <div className="mt-8 flex-col items-start gap-2 md:flex">
                 <p className="text-md flex items-center">
+                  <span className="mr-2" role="img" aria-label="open-source">
+                    🌐
+                  </span>
+                  Open source alternative to Spotify's Collaborative Playlists
+                </p>
+                <p className="text-md flex items-center">
+                  <span className="mr-2" role="img" aria-label="anonymous">
+                    🕵️
+                  </span>
+                  Anonymous accounts: no sign up or email needed
+                </p>
+                <p className="text-md flex items-center">
                   <span className="mr-2" role="img" aria-label="sparkles">
                     ✨
                   </span>
-                  Share a link with your friends and let the whole group
-                  collaboratively add songs
-                </p>
-                <p className="text-md flex items-center">
-                  <span className="mr-2" role="img" aria-label="music">
-                    🎵
-                  </span>
-                  Anyone can queue up music from their phone
+                  Share a link, add songs together
                 </p>
                 <p className="text-md flex items-center">
                   <span className="mr-2" role="img" aria-label="rocket">
@@ -140,7 +145,7 @@ export default function HomePage() {
           </Card>
         </div>
       </div>
-      <div className="w-full mt-8">
+      <div className="w-full">
         <Marquee
           items={[
             // Each item is a container element with icon and text
@@ -177,65 +182,8 @@ export default function HomePage() {
           ]}
         />
       </div>
-      {/* Feature Squares Section */}
-      <div className="w-full mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-0 border-black overflow-hidden my-0!">
-        {/* Square 1: Who made this? */}
-        <div className="flex flex-col justify-center p-8 min-h-[220px] border-b-4 border-black md:border-b-0 md:border-r-4 bg-main-light">
-          <div className="flex items-center mb-4">
-            <CircleBallIcon className="mr-4 w-10 h-10 text-black" />
-            <span className="text-2xl font-bold text-black">
-              Who made this?
-            </span>
-          </div>
-          <p className="text-lg text-black">
-            My name is Nick, I love creating software. Spotify's collaborative
-            playlists are great, but not everyone has Spotify (including me) so
-            I needed something different.
-          </p>
-        </div>
-        {/* Square 2: Open Source */}
-        <div className="flex flex-col bg-main justify-center p-8 min-h-[220px] border-b-4 border-black md:border-b-0">
-          <div className="flex items-center mb-4">
-            <OpensourceIcon className="mr-4 w-10 h-10 text-black" />
-            <span className="text-2xl font-bold text-black">Open Source</span>
-          </div>
-          <p className="text-lg text-black">
-            I have some ideas for where this could go! Maybe adding a song could
-            be a "paid" feature for businesses to use it like a real jukebox.
-            It's open in case someone else has ideas they want to implement.
-          </p>
-        </div>
-        {/* Square 3: What does this do? */}
-        <div className="flex flex-col bg-main justify-center p-8 min-h-[220px] border-b-4 border-t-4 border-black md:border-b-0 md:border-r-4">
-          <div className="flex items-center mb-4">
-            <FanIcon className="mr-4 w-10 h-10 text-black" fill="black" />
-            <span className="text-2xl font-bold text-black">
-              What does this do?
-            </span>
-          </div>
-          <p className="text-lg text-black">
-            Right now it's really simple and tiny, kind of a toy project. You
-            can create a "box" and then send your friends a link to add songs or
-            do it yourself.
-          </p>
-        </div>
-        {/* Square 4: Is it fair if I have a large group? */}
-        <div className="flex flex-col justify-center p-8 min-h-[220px] border-t-4 bg-main-light">
-          <div className="flex items-center mb-4">
-            <SpikeIcon className="mr-4 w-10 h-10 text-black" />
-            <span className="text-2xl font-bold text-black">
-              Is it fair if I have a large group?
-            </span>
-          </div>
-          <p className="text-lg text-black">
-            Yes! When songs get added to the queue, they're automatically sorted
-            in a fair order. If person A adds two songs and person B adds one,
-            B's song goes between A's. Scales infinitely!
-          </p>
-        </div>
-      </div>
       {/* FAQ Section */}
-      <div className="w-full bg-main-light py-16 flex flex-col items-center border-t-4 border-black">
+      <div className="w-full bg-main-light py-16 flex flex-col items-center border-b-4 border-black px-5">
         <h2 className="text-3xl md:text-4xl font-bold mb-8 text-center">
           Frequently asked questions
         </h2>
@@ -262,6 +210,23 @@ export default function HomePage() {
             </AccordionItem>
             <AccordionItem value="item-3">
               <AccordionTrigger className="bg-main text-black font-semibold">
+                How can I contact you about feature requests?
+              </AccordionTrigger>
+              <AccordionContent>
+                You can reach out by DMing me on{" "}
+                <a
+                  href="https://twitter.com/skeptrun"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline text-blue-600 hover:text-blue-800"
+                >
+                  X (formerly Twitter) @skeptrune
+                </a>
+                . I love hearing your ideas and feedback!
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger className="bg-main text-black font-semibold">
                 How to contribute?
               </AccordionTrigger>
               <AccordionContent>
@@ -280,6 +245,103 @@ export default function HomePage() {
           </Accordion>
         </div>
       </div>
+      {/* Feature Squares Section */}
+      <div className="w-full mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-0 border-black overflow-hidden my-0!">
+        {/* Square 1: Who made this? */}
+        <div className="flex flex-col justify-center p-8 min-h-[220px] border-b-4 border-black md:border-b-0 md:border-r-4 bg-main-light">
+          <div className="flex items-center mb-4">
+            <CircleBallIcon className="mr-4 w-10 h-10 text-black" />
+            <span className="text-2xl font-bold text-black">
+              Who made this?
+            </span>
+          </div>
+          <p className="text-lg text-black">
+            My name is Nick, I love creating software. Spotify's collaborative
+            playlists are great, but not everyone has Spotify (including me) so
+            I needed something different.
+          </p>
+        </div>
+        {/* Square 2: Open Source */}
+        <div className="flex flex-col bg-main justify-center p-8 min-h-[220px] border-black">
+          <div className="flex items-center mb-4">
+            <OpensourceIcon className="mr-4 w-10 h-10 text-black" />
+            <span className="text-2xl font-bold text-black">Open Source</span>
+          </div>
+          <p className="text-lg text-black">
+            I have some ideas for where this could go! Maybe adding a song could
+            be a "paid" feature for businesses to use it like a real jukebox.
+            It's open in case someone else has ideas they want to implement.
+          </p>
+        </div>
+        {/* Square 3: What does this do? */}
+        <div className="flex flex-col bg-main-light lg:bg-main justify-center p-8 min-h-[220px] border-t-4 border-black md:border-b-0 md:border-r-4">
+          <div className="flex items-center mb-4">
+            <FanIcon className="mr-4 w-10 h-10 text-black" fill="black" />
+            <span className="text-2xl font-bold text-black">
+              What does this do?
+            </span>
+          </div>
+          <p className="text-lg text-black">
+            Right now it's really simple and tiny, kind of a toy project. You
+            can create a "box" and then send your friends a link to add songs or
+            do it yourself.
+          </p>
+        </div>
+        {/* Square 4: Is it fair if I have a large group? */}
+        <div className="flex flex-col justify-center p-8 min-h-[220px] border-t-4 bg-main md:bg-main-light">
+          <div className="flex items-center mb-4">
+            <SpikeIcon className="mr-4 w-10 h-10 text-black" />
+            <span className="text-2xl font-bold text-black">
+              Is it fair if I have a large group?
+            </span>
+          </div>
+          <p className="text-lg text-black">
+            Yes! When songs get added to the queue, they're automatically sorted
+            in a fair order. If person A adds two songs and person B adds one,
+            B's song goes between A's. Scales infinitely!
+          </p>
+        </div>
+      </div>
+      {/* Changelog Section */}
+      <div className="w-full flex flex-col items-center py-16 border-t-4 px-5">
+        <Card className="w-full max-w-xl p-8 bg-white border-2 border-black shadow-md">
+          <h2 className="text-3xl md:text-4xl font-bold mb-8 text-center">
+            Changelog
+          </h2>
+          <div className="space-y-8">
+            <div>
+              <h3 className="text-2xl font-semibold mb-2">
+                v1.2.0 (2025-06-30)
+              </h3>
+              <ul className="list-disc list-inside text-lg ml-4">
+                <li>Added changelog section to homepage</li>
+                <li>Improved FAQ and feature descriptions</li>
+                <li>Minor UI/UX tweaks for mobile and desktop</li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-2xl font-semibold mb-2">v1.1.0</h3>
+              <ul className="list-disc list-inside text-lg ml-4">
+                <li>Added open source announcement and contribution info</li>
+                <li>Enhanced fairness algorithm for song queue</li>
+                <li>Improved onboarding flow for new users</li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-2xl font-semibold mb-2">v1.0.0</h3>
+              <ul className="list-disc list-inside text-lg ml-4">
+                <li>
+                  Initial release: create and join jukeboxes, add songs,
+                  collaborative playlists
+                </li>
+                <li>Mobile and desktop support</li>
+                <li>No login or app required</li>
+              </ul>
+            </div>
+          </div>
+        </Card>
+      </div>
+      {/* End Changelog Section */}
     </div>
   );
 }

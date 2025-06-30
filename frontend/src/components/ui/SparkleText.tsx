@@ -53,7 +53,7 @@ export const SparkleText: React.FC<{ children: React.ReactNode }> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: [0, 1, 0] }}
           transition={{
-            duration: 1.0,
+            duration: 1.6,
             repeat: Infinity,
             repeatType: "loop",
             ease: "easeInOut",
