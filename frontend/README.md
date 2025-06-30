@@ -24,12 +24,13 @@ export default tseslint.config({
   languageOptions: {
     // other options...
     parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
+      project: ["./tsconfig.node.json", "./tsconfig.app.json"],
       tsconfigRootDir: import.meta.dirname,
     },
   },
-})
+});
 ```
+
 ## Environment Variables
 
 This project uses Vite environment variables to configure the API host. Create a `.env.local` file in the project root (ignored by Git via `*.local`) and set the `VITE_API_HOST` variable without the `/api` suffix. For example:
@@ -41,30 +42,30 @@ VITE_API_HOST=http://localhost:3000
 The `/api` prefix will be appended automatically when calling routes in the code. For example:
 
 ```typescript
-const API_HOST = import.meta.env.VITE_API_HOST?.replace(/\/$/, '') || '';
+const API_HOST = import.meta.env.VITE_API_HOST?.replace(/\/$/, "") || "";
 fetch(`${API_HOST}/api/hello`)
-  .then(res => res.json())
-  .then(data => console.log(data));
+  .then((res) => res.json())
+  .then((data) => console.log(data));
 ```
 
 You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
 ```js
 // eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+import reactX from "eslint-plugin-react-x";
+import reactDom from "eslint-plugin-react-dom";
 
 export default tseslint.config({
   plugins: {
     // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
+    "react-x": reactX,
+    "react-dom": reactDom,
   },
   rules: {
     // other rules...
     // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
+    ...reactX.configs["recommended-typescript"].rules,
     ...reactDom.configs.recommended.rules,
   },
-})
+});
 ```
