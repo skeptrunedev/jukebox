@@ -11,6 +11,12 @@ import CircleBallIcon from "../components/icons/circleball";
 import FanIcon from "../components/icons/fan";
 import SpikeIcon from "../components/icons/spike";
 import OpensourceIcon from "../components/icons/opensource";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "../components/ui/accordion";
 
 export default function HomePage() {
   const { user } = useJukebox();
@@ -226,6 +232,52 @@ export default function HomePage() {
             in a fair order. If person A adds two songs and person B adds one,
             B's song goes between A's. Scales infinitely!
           </p>
+        </div>
+      </div>
+      {/* FAQ Section */}
+      <div className="w-full bg-main-light py-16 flex flex-col items-center border-t-4 border-black">
+        <h2 className="text-3xl md:text-4xl font-bold mb-8 text-center">
+          Frequently asked questions
+        </h2>
+        <div className="w-full max-w-xl flex flex-col gap-4">
+          <Accordion type="single" collapsible className="flex flex-col gap-4">
+            <AccordionItem value="item-1">
+              <AccordionTrigger className="bg-main text-black font-semibold">
+                Do I need to create an account to use Jukebox?
+              </AccordionTrigger>
+              <AccordionContent>
+                No account or login is required to create or join a jukebox.
+                Just create a box and share the link with your friends!
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger className="bg-main text-black font-semibold">
+                Which songs are available?
+              </AccordionTrigger>
+              <AccordionContent>
+                Pretty much anything you can find on YouTube or Spotify is
+                available to play. The exact source is a secret, but if you can
+                find it on those platforms, you can probably queue it here!
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger className="bg-main text-black font-semibold">
+                How to contribute?
+              </AccordionTrigger>
+              <AccordionContent>
+                Open an issue or pull request on{" "}
+                <a
+                  href="https://github.com/skeptrunedev/jukebox"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline text-blue-600 hover:text-blue-800"
+                >
+                  GitHub
+                </a>
+                ! Contributions, suggestions, and improvements are welcome.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </div>
     </div>
