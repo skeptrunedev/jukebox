@@ -8,10 +8,10 @@ import { Upload } from "@aws-sdk/lib-storage";
 import { S3 } from "@aws-sdk/client-s3";
 import crypto from "crypto";
 
-const username = process.env.PROXY_USERNAME;
-const password = process.env.PROXY_PASSWORD;
-const country = process.env.PROXY_COUNTRY;
-const proxy = process.env.PROXY_HOST;
+const PROXY_USERNAME = process.env.PROXY_USERNAME;
+const PROXY_PASSWORD = process.env.PROXY_PASSWORD;
+const PROXY_COUNTRY = process.env.PROXY_COUNTRY;
+const PROXY_HOST = process.env.PROXY_HOST;
 
 const accessKeyId = process.env.S3_ACCESS_KEY_ID;
 const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
@@ -115,11 +115,10 @@ async function getRetryCount(youtube_id: string) {
 }
 
 function getTimeoutMs(retryCount: number) {
-  if (retryCount < 3) return 30 * 1000;
-  if (retryCount < 5) return 45 * 1000;
-  if (retryCount < 7) return 1 * 60 * 1000;
-  if (retryCount < 10) return 2 * 60 * 1000;
-  return 3 * 60 * 1000;
+  if (retryCount < 5) return 60 * 1000;
+  if (retryCount < 7) return 2 * 60 * 1000;
+  if (retryCount < 10) return 3 * 60 * 1000;
+  return 10 * 60 * 1000;
 }
 
 async function workerLoop() {
@@ -144,33 +143,51 @@ async function workerLoop() {
         );
         const timeoutMs = getTimeoutMs(retryCount);
 
-        await Promise.race([
-          (async () => {
-            try {
-              const ytdlAgent = proxy
-                ? ytdl.createProxyAgent({
-                    uri: `http://${username}-cc-${country}:${password}@${proxy}`,
-                  })
-                : undefined;
-              const info = await ytdl.getInfo(youtube_id, { agent: ytdlAgent });
-              const format = ytdl.chooseFormat(info.formats, {
-                quality: "highestaudio",
-                filter: "audioonly",
-              });
-              if (!format || !format.mimeType) {
-                throw new Error("No suitable audio format found");
-              }
-              const { PassThrough } = await import("stream");
-              const s3Key = `youtube-audio/${youtube_id}.webm`;
-              await new Promise((resolve, reject) => {
+        await (async () => {
+          const abortController = new AbortController();
+          let timeoutId: NodeJS.Timeout | undefined;
+          try {
+            const timeoutPromise = new Promise((_, reject) => {
+              timeoutId = setTimeout(() => {
+                abortController.abort();
+                reject(new Error("Processing timed out"));
+              }, timeoutMs);
+            });
+
+            const ytdlAgent = PROXY_HOST
+              ? ytdl.createProxyAgent({
+                  uri: `http://${PROXY_USERNAME}${
+                    PROXY_COUNTRY ? `-cc-${PROXY_COUNTRY}` : ""
+                  }:${PROXY_PASSWORD}@${PROXY_HOST}`,
+                })
+              : undefined;
+            const info = await ytdl.getInfo(youtube_id, { agent: ytdlAgent });
+            const format = ytdl.chooseFormat(info.formats, {
+              quality: "highestaudio",
+              filter: "audioonly",
+            });
+            if (!format || !format.mimeType) {
+              throw new Error("No suitable audio format found");
+            }
+            const { PassThrough } = await import("stream");
+            const s3Key = `youtube-audio/${youtube_id}.webm`;
+            await Promise.race([
+              new Promise((resolve, reject) => {
                 const stream = ytdl(youtube_id, {
                   quality: "highestaudio",
                   filter: "audioonly",
                   agent: ytdlAgent,
                 });
+                abortController.signal.addEventListener("abort", () => {
+                  stream.destroy(new Error("Aborted by timeout"));
+                });
                 stream.on("error", (err) => {
-                  console.error(`Stream error for ${youtube_id}:`, err);
-                  reject(err);
+                  if (abortController.signal.aborted) {
+                    reject(new Error("Aborted by timeout"));
+                  } else {
+                    console.error(`Stream error for ${youtube_id}:`, err);
+                    reject(err);
+                  }
                 });
                 const pass = new PassThrough();
                 stream.pipe(pass);
@@ -184,39 +201,42 @@ async function workerLoop() {
                     ACL: "public-read",
                   },
                 });
+                abortController.signal.addEventListener("abort", () => {
+                  pass.destroy(new Error("Aborted by timeout"));
+                });
                 upload
                   .done()
                   .then(() => resolve(undefined))
                   .catch((err) => {
-                    console.error(`S3 upload error for ${youtube_id}:`, err);
-                    reject(err);
+                    if (abortController.signal.aborted) {
+                      reject(new Error("Aborted by timeout"));
+                    } else {
+                      console.error(`S3 upload error for ${youtube_id}:`, err);
+                      reject(err);
+                    }
                   });
-              });
-              // Mark as completed
-              await db
-                .updateTable("song_youtube_status")
-                .set({
-                  status: "completed",
-                  updated_at: new Date().toISOString(),
-                  error_message: null,
-                })
-                .where("youtube_id", "=", youtube_id)
-                .where("status", "=", "processing")
-                .execute();
-              console.log(`Uploaded ${youtube_id} to S3 as ${s3Key}`);
-              return;
-            } catch (err) {
-              console.error(`Error processing ${youtube_id}:`, err);
-              throw err;
-            }
-          })(),
-          new Promise((_, reject) =>
-            setTimeout(
-              () => reject(new Error("Processing timed out")),
-              timeoutMs
-            )
-          ),
-        ]);
+              }),
+              timeoutPromise,
+            ]);
+            // Mark as completed
+            await db
+              .updateTable("song_youtube_status")
+              .set({
+                status: "completed",
+                updated_at: new Date().toISOString(),
+                error_message: null,
+              })
+              .where("youtube_id", "=", youtube_id)
+              .where("status", "=", "processing")
+              .execute();
+            console.log(`Uploaded ${youtube_id} to S3 as ${s3Key}`);
+            return;
+          } catch (err) {
+            throw err;
+          } finally {
+            if (timeoutId) clearTimeout(timeoutId);
+          }
+        })();
       } catch (err: any) {
         console.error("Download/upload error for", youtube_id, err);
         const statusRow = await db

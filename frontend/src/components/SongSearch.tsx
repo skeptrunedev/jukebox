@@ -10,6 +10,7 @@ import {
 } from "@/lib/youtube";
 import { searchYouTube } from "@/sdk";
 import { useJukebox } from "@/hooks/useJukeboxContext";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface YouTubeSearchResult {
   id: string;
@@ -146,70 +147,101 @@ export default function SongSearch({ onSongSelect }: SongSearchProps) {
         )}
       </div>
 
-      {error && (
-        <div className="text-red-600 text-sm p-2 bg-red-50 rounded-md">
-          {error}
-        </div>
-      )}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            key="error"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.25 }}
+            className="text-red-600 text-sm p-2 bg-red-50 rounded-md"
+          >
+            {error}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {results.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="font-semibold text-lg">Search Results</h3>
-          <div className="grid gap-3 max-h-96 overflow-y-auto scrollbar">
-            {results
-              .filter(
-                (result) => !songs.some((song) => song.youtube_id === result.id)
-              )
-              .map((result) => (
-                <Card key={result.id} className="p-0">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={result.thumbnail}
-                          alt={result.title}
-                          className="w-16 h-12 object-cover rounded"
-                        />
-                        <div className="min-w-0">
-                          <h4
-                            className="font-medium text-sm text-wrap"
-                            title={result.title}
-                            dangerouslySetInnerHTML={{ __html: result.title }}
-                          />
-                          <p
-                            className="text-xs text-gray-600 text-wrap"
-                            title={result.channelTitle}
-                            dangerouslySetInnerHTML={{
-                              __html: result.channelTitle,
-                            }}
-                          />
-                          <p className="text-xs text-gray-500">
-                            {formatDuration(
-                              parseYouTubeDuration(result.duration)
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => handleSongSelect(result)}
-                        disabled={addingIds.has(result.id)}
-                        className="flex items-center gap-1"
-                      >
-                        {addingIds.has(result.id) ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Plus className="h-3 w-3" />
-                        )}
-                        {addingIds.has(result.id) ? "Adding..." : "Add"}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {results.length > 0 && (
+          <motion.div
+            key="results"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-2"
+          >
+            <h3 className="font-semibold text-lg">Search Results</h3>
+            <div className="grid gap-3 max-h-96 overflow-y-auto scrollbar">
+              <AnimatePresence>
+                {results
+                  .filter(
+                    (result) =>
+                      !songs.some((song) => song.youtube_id === result.id)
+                  )
+                  .map((result) => (
+                    <motion.div
+                      key={result.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <Card className="p-0">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={result.thumbnail}
+                                alt={result.title}
+                                className="w-16 h-12 object-cover rounded"
+                              />
+                              <div className="min-w-0">
+                                <h4
+                                  className="font-medium text-sm text-wrap"
+                                  title={result.title}
+                                  dangerouslySetInnerHTML={{
+                                    __html: result.title,
+                                  }}
+                                />
+                                <p
+                                  className="text-xs text-gray-600 text-wrap"
+                                  title={result.channelTitle}
+                                  dangerouslySetInnerHTML={{
+                                    __html: result.channelTitle,
+                                  }}
+                                />
+                                <p className="text-xs text-gray-500">
+                                  {formatDuration(
+                                    parseYouTubeDuration(result.duration)
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={() => handleSongSelect(result)}
+                              disabled={addingIds.has(result.id)}
+                              className="flex items-center gap-1"
+                            >
+                              {addingIds.has(result.id) ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Plus className="h-3 w-3" />
+                              )}
+                              {addingIds.has(result.id) ? "Adding..." : "Add"}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

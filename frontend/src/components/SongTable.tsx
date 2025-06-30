@@ -7,6 +7,7 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
+import { AnimatePresence } from "framer-motion";
 
 /** Definition of a column: header and cell renderer */
 export interface Column<Row> {
@@ -44,21 +45,23 @@ export function SongTable<Row>({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.map((row, rowIndex) => {
-          if (renderRow) {
-            return renderRow(row, columns, getRowProps);
-          }
-          const props = getRowProps?.(row, rowIndex) ?? { key: rowIndex };
-          return (
-            <TableRow key={props.key} className={props.className}>
-              {columns.map((col, colIndex) => (
-                <TableCell key={col.id ?? colIndex}>
-                  {col.cell(row, rowIndex)}
-                </TableCell>
-              ))}
-            </TableRow>
-          );
-        })}
+        <AnimatePresence>
+          {rows.map((row, rowIndex) => {
+            if (renderRow) {
+              return renderRow(row, columns, getRowProps);
+            }
+            const props = getRowProps?.(row, rowIndex) ?? { key: rowIndex };
+            return (
+              <TableRow key={props.key} className={props.className}>
+                {columns.map((col, colIndex) => (
+                  <TableCell key={col.id ?? colIndex}>
+                    {col.cell(row, rowIndex)}
+                  </TableCell>
+                ))}
+              </TableRow>
+            );
+          })}
+        </AnimatePresence>
       </TableBody>
     </Table>
   );

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { InteractiveSongTable } from "@/components/InteractiveSongTable";
 import type { Column } from "@/components/SongTable";
 import YouTubePlayer from "@/components/YouTubePlayer";
@@ -77,12 +76,15 @@ export default function PlayPage() {
                 Share this link so others can add songs to this jukebox
               </p>
               <div className="flex gap-2 items-center">
-                <Input
-                  value={shareUrl || ""}
-                  readOnly
-                  className="flex-1 font-mono text-sm"
-                  onClick={(e) => (e.target as HTMLInputElement).select()}
-                />
+                <span
+                  className="flex-1 font-mono text-sm bg-muted px-3 py-1.5 rounded select-all cursor-pointer border-border border-2"
+                  title={shareUrl || ""}
+                  onClick={() => {
+                    if (shareUrl) navigator.clipboard.writeText(shareUrl);
+                  }}
+                >
+                  {shareUrl}
+                </span>
                 <Button
                   onClick={handleCopyUrl}
                   variant="neutral"
