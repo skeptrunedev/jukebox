@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Yusei+Magic&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Yusei+Magic&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -10,6 +10,7 @@
   --foreground: oklch(0% 0 0);
   --main-foreground: oklch(0% 0 0);
   --main: oklch(66.9% 0.18368 248.8066);
+  --main-light: oklch(94.3% 0.0268 242.57);
   --border: oklch(0% 0 0);
   --ring: oklch(0% 0 0);
   --overlay: oklch(0% 0 0 / 0.8);
@@ -41,6 +42,7 @@
 
 @theme inline {
   --color-main: var(--main);
+  --color-main-light: var(--main-light);
   --color-background: var(--background);
   --color-secondary-background: var(--secondary-background);
   --color-foreground: var(--foreground);
@@ -62,12 +64,33 @@
   --shadow-shadow: var(--shadow);
   --font-weight-base: 500;
   --font-weight-heading: 700;
+
+  --animate-marquee: marquee 20s linear infinite;
+  --animate-marquee2: marquee2 20s linear infinite;
+
+  @keyframes marquee {
+    0% {
+      transform: translateX(0%);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+
+  @keyframes marquee2 {
+    0% {
+      transform: translateX(100%);
+    }
+    100% {
+      transform: translateX(0%);
+    }
+  }
 }
 
 @layer base {
   body {
     @apply text-foreground font-base bg-background;
-    font-family: 'Yusei Magic', sans-serif;
+    font-family: "Yusei Magic", sans-serif;
   }
 
   h1,
@@ -77,6 +100,6 @@
   h5,
   h6 {
     @apply font-heading;
-    font-family: 'Yusei Magic', sans-serif;
+    font-family: "Yusei Magic", sans-serif;
   }
 }
