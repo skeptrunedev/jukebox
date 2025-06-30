@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Yusei+Magic&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -66,6 +67,7 @@
 @layer base {
   body {
     @apply text-foreground font-base bg-background;
+    font-family: 'Yusei Magic', sans-serif;
   }
 
   h1,
@@ -75,5 +77,6 @@
   h5,
   h6 {
     @apply font-heading;
+    font-family: 'Yusei Magic', sans-serif;
   }
 }

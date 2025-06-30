@@ -16,11 +16,15 @@ import { Button } from "@/components/ui/button";
 interface CreateBoxDialogProps {
   onCreate: (name: string) => Promise<void>;
   defaultName?: string;
+  triggerClassName?: string;
+  triggerText?: string;
 }
 
 export function CreateBoxDialog({
   onCreate,
   defaultName = "",
+  triggerClassName = "sm:text-xl hover:cursor-pointer",
+  triggerText = "Create Jukebox",
 }: CreateBoxDialogProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(defaultName);
@@ -51,8 +55,8 @@ export function CreateBoxDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button size="lg" className="sm:text-xl hover:cursor-pointer">
-          Create Jukebox
+        <Button size="lg" className={triggerClassName}>
+          {triggerText}
         </Button>
       </DialogTrigger>
       <DialogContent>
