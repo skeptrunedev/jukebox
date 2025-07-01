@@ -114,13 +114,6 @@ async function getRetryCount(youtube_id: string) {
   return statusRow?.retry_count ?? 0;
 }
 
-function getTimeoutMs(retryCount: number) {
-  if (retryCount < 5) return 60 * 1000;
-  if (retryCount < 7) return 2 * 60 * 1000;
-  if (retryCount < 10) return 3 * 60 * 1000;
-  return 10 * 60 * 1000;
-}
-
 async function workerLoop() {
   while (true) {
     try {
@@ -141,19 +134,11 @@ async function workerLoop() {
           `Processing ${youtube_id} with retry count ${retryCount}`,
           new Date().toISOString()
         );
-        const timeoutMs = getTimeoutMs(retryCount);
 
         await (async () => {
           const abortController = new AbortController();
           let timeoutId: NodeJS.Timeout | undefined;
           try {
-            const timeoutPromise = new Promise((_, reject) => {
-              timeoutId = setTimeout(() => {
-                abortController.abort();
-                reject(new Error("Processing timed out"));
-              }, timeoutMs);
-            });
-
             const ytdlAgent = PROXY_HOST
               ? ytdl.createProxyAgent({
                   uri: `http://${PROXY_USERNAME}${
@@ -169,55 +154,98 @@ async function workerLoop() {
             if (!format || !format.mimeType) {
               throw new Error("No suitable audio format found");
             }
+            let chunkCountReceived = 0;
             const { PassThrough } = await import("stream");
             const s3Key = `youtube-audio/${youtube_id}.webm`;
-            await Promise.race([
-              new Promise((resolve, reject) => {
-                const stream = ytdl(youtube_id, {
-                  quality: "highestaudio",
-                  filter: "audioonly",
-                  agent: ytdlAgent,
-                });
-                abortController.signal.addEventListener("abort", () => {
-                  stream.destroy(new Error("Aborted by timeout"));
-                });
-                stream.on("error", (err) => {
+            // Await the upload promise so logs and DB update happen after upload completes
+            const uploadPromise = new Promise((resolve, reject) => {
+              const stream = ytdl(youtube_id, {
+                quality: "highestaudio",
+                filter: "audioonly",
+                agent: ytdlAgent,
+              });
+              let inactivityTimeout: NodeJS.Timeout | undefined;
+              let startTimeout: NodeJS.Timeout | undefined;
+              let receivedFirstData = false;
+              const resetInactivityTimeout = () => {
+                if (inactivityTimeout) clearTimeout(inactivityTimeout);
+                inactivityTimeout = setTimeout(() => {
+                  stream.destroy(
+                    new Error("Aborted by inactivity timeout (no data for 15s)")
+                  );
+                }, 15000);
+              };
+              // Start the inactivity timer
+              resetInactivityTimeout();
+              // Start the start timeout (fires if no data received in 15s)
+              startTimeout = setTimeout(() => {
+                if (!receivedFirstData) {
+                  stream.destroy(
+                    new Error(
+                      "Aborted by start timeout (no data received in first 15s)"
+                    )
+                  );
+                }
+              }, 15000);
+              stream.on("data", (chunk) => {
+                if (!receivedFirstData) {
+                  receivedFirstData = true;
+                  if (startTimeout) clearTimeout(startTimeout);
+                }
+                resetInactivityTimeout();
+                chunkCountReceived += 1;
+                console.log(
+                  `Stream received data for ${youtube_id}: ${chunk.length} bytes (chunk #${chunkCountReceived})`
+                );
+              });
+              abortController.signal.addEventListener("abort", () => {
+                if (inactivityTimeout) clearTimeout(inactivityTimeout);
+                if (startTimeout) clearTimeout(startTimeout);
+                stream.destroy(new Error("Aborted by timeout"));
+              });
+              stream.on("error", (err) => {
+                if (inactivityTimeout) clearTimeout(inactivityTimeout);
+                if (startTimeout) clearTimeout(startTimeout);
+                if (abortController.signal.aborted) {
+                  reject(new Error("Aborted by timeout"));
+                } else {
+                  console.error(`Stream error for ${youtube_id}:`, err);
+                  reject(err);
+                }
+              });
+              const pass = new PassThrough();
+              stream.pipe(pass);
+              const upload = new Upload({
+                client: s3,
+                params: {
+                  Bucket: S3_BUCKET_NAME!,
+                  Key: s3Key,
+                  Body: pass,
+                  ContentType: "audio/webm",
+                  ACL: "public-read",
+                },
+              });
+              abortController.signal.addEventListener("abort", () => {
+                if (inactivityTimeout) clearTimeout(inactivityTimeout);
+                pass.destroy(new Error("Aborted by timeout"));
+              });
+              upload
+                .done()
+                .then(() => {
+                  if (inactivityTimeout) clearTimeout(inactivityTimeout);
+                  resolve(undefined);
+                })
+                .catch((err) => {
+                  if (inactivityTimeout) clearTimeout(inactivityTimeout);
                   if (abortController.signal.aborted) {
                     reject(new Error("Aborted by timeout"));
                   } else {
-                    console.error(`Stream error for ${youtube_id}:`, err);
+                    console.error(`S3 upload error for ${youtube_id}:`, err);
                     reject(err);
                   }
                 });
-                const pass = new PassThrough();
-                stream.pipe(pass);
-                const upload = new Upload({
-                  client: s3,
-                  params: {
-                    Bucket: S3_BUCKET_NAME!,
-                    Key: s3Key,
-                    Body: pass,
-                    ContentType: "audio/webm",
-                    ACL: "public-read",
-                  },
-                });
-                abortController.signal.addEventListener("abort", () => {
-                  pass.destroy(new Error("Aborted by timeout"));
-                });
-                upload
-                  .done()
-                  .then(() => resolve(undefined))
-                  .catch((err) => {
-                    if (abortController.signal.aborted) {
-                      reject(new Error("Aborted by timeout"));
-                    } else {
-                      console.error(`S3 upload error for ${youtube_id}:`, err);
-                      reject(err);
-                    }
-                  });
-              }),
-              timeoutPromise,
-            ]);
+            });
+            await uploadPromise;
             // Mark as completed
             await db
               .updateTable("song_youtube_status")
@@ -229,7 +257,9 @@ async function workerLoop() {
               .where("youtube_id", "=", youtube_id)
               .where("status", "=", "processing")
               .execute();
-            console.log(`Uploaded ${youtube_id} to S3 as ${s3Key}`);
+            console.log(
+              `\x1b[32mUploaded ${youtube_id} to S3 as ${s3Key}\x1b[0m`
+            );
             return;
           } catch (err) {
             throw err;
@@ -272,11 +302,10 @@ async function workerLoop() {
         }
       }
     } catch (err) {
-      console.error("Worker loop error:", err);
-      await new Promise((res) => setTimeout(res, 5000));
+      console.error("\x1b[31mWorker loop error:\x1b[0m", err);
     }
 
-    await new Promise((res) => setTimeout(res, 1000));
+    await new Promise((res) => setTimeout(res, 100));
   }
 }
 
