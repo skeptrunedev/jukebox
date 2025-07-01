@@ -728,8 +728,20 @@ app.post("/api/boxes", async (req, res, _next: NextFunction) => {
  */
 app.put("/api/boxes/:id", async (req, res, _next: NextFunction) => {
   try {
+    const identifier = req.params.id;
     const { name, user_id } = req.body;
     const updates: Record<string, unknown> = {};
+
+    const box = await db
+      .selectFrom("boxes")
+      .selectAll()
+      .where(sql<boolean>`id = ${identifier} OR slug = ${identifier}`)
+      .executeTakeFirst();
+
+    if (!box) {
+      return void res.status(404).json({ error: "Box not found" });
+    }
+
     if (name !== undefined) updates.name = name;
     if (user_id !== undefined) {
       const user = await db
@@ -746,17 +758,17 @@ app.put("/api/boxes/:id", async (req, res, _next: NextFunction) => {
     const updatedRows = await db
       .updateTable("boxes")
       .set(updates)
-      .where("id", "=", req.params.id)
+      .where("id", "=", box.id)
       .execute();
     if (!updatedRows.length) {
       return void res.status(404).json({ error: "Box not found" });
     }
-    const box = await db
+    const updatedBox = await db
       .selectFrom("boxes")
       .selectAll()
-      .where("id", "=", req.params.id)
+      .where("id", "=", box.id)
       .executeTakeFirst();
-    res.json(box);
+    res.json(updatedBox);
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
