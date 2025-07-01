@@ -324,6 +324,20 @@ export default function HomePage() {
           </h2>
           <div className="space-y-8">
             <div>
+              <h3 id="changelog-v0-0-4" className="text-2xl font-semibold mb-2">
+                v0.0.4 (2025-07-01)
+              </h3>
+              <ul className="list-disc list-inside text-lg ml-4">
+                <li>
+                  📧 Added <b>SMTP email notifications</b> for upload success
+                  and failure
+                </li>
+                <li>
+                  🛠️ Updated <b>.env.dist</b> and package dependencies
+                </li>
+              </ul>
+            </div>
+            <div>
               <h3 id="changelog-v0-0-3" className="text-2xl font-semibold mb-2">
                 v0.0.3 (2025-07-01)
               </h3>
