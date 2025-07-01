@@ -335,6 +335,10 @@ export default function HomePage() {
                 <li>
                   🛠️ Updated <b>.env.dist</b> and package dependencies
                 </li>
+                <li>
+                  🆕 <b>Box update endpoint</b> now accepts <b>slug</b> or{" "}
+                  <b>id</b> and has improved error handling
+                </li>
               </ul>
             </div>
             <div>
