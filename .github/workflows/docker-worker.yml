@@ -11,6 +11,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      GITHUB_REF_TYPE: ${{ github.ref_type }}
+      GITHUB_REF_NAME: ${{ github.ref_name }}
+
     steps:
       - uses: actions/checkout@v3
         with:
@@ -26,8 +30,8 @@ jobs:
       - name: Set image tag
         id: vars
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            echo "TAG=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
           else
             echo "TAG=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
           fi

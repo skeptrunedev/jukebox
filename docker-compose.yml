@@ -9,7 +9,7 @@ services:
       - .env
     environment:
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
-      PORT: ${PORT}
+      PORT: ${SERVER_INTERNAL_PORT}
       PROXY_USERNAME: ${PROXY_USERNAME}
       PROXY_PASSWORD: ${PROXY_PASSWORD}
       PROXY_COUNTRY: ${PROXY_COUNTRY}
@@ -64,6 +64,34 @@ services:
       - server
     restart: unless-stopped
 
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # MinIO Console
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+    entrypoint: ["/bin/sh", "/minio-init.sh"]
+    volumes:
+      - ./minio-init.sh:/minio-init.sh:ro
+    restart: "no"
+
 volumes:
   sqlite_data:
   logsink_data:
+  minio_data:
