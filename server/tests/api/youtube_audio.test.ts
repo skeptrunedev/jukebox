@@ -71,7 +71,7 @@ describe("YouTube Audio API", () => {
         try {
           const response = await fetch.default(
             `http://localhost:${
-              process.env.PORT || 3000
+              process.env.API_SERVER_PORT || 3000
             }/api/youtube/audio?videoId=${testVideoId}`
           );
 

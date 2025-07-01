@@ -7,7 +7,7 @@ services:
       - .env
     environment:
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
-      PORT: ${SERVER_INTERNAL_PORT}
+      API_SERVER_PORT: ${SERVER_INTERNAL_PORT}
       PROXY_USERNAME: ${PROXY_USERNAME}
       PROXY_PASSWORD: ${PROXY_PASSWORD}
       PROXY_COUNTRY: ${PROXY_COUNTRY}
@@ -21,9 +21,22 @@ services:
     volumes:
       - sqlite_data:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${SERVER_INTERNAL_PORT}/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 60s
 
   worker:
     image: skeptrune/jukebox-worker:v0.0.2
+    ports:
+      - "${WORKER_PORT}:${WORKER_INTERNAL_PORT}"
     env_file:
       - .env
     environment:
@@ -32,6 +45,7 @@ services:
       PROXY_PASSWORD: ${PROXY_PASSWORD}
       PROXY_COUNTRY: ${PROXY_COUNTRY}
       PROXY_HOST: ${PROXY_HOST}
+      WORKER_SERVER_PORT: ${WORKER_INTERNAL_PORT}
       S3_BUCKET_NAME: ${S3_BUCKET_NAME}
       S3_BUCKET_REGION: ${S3_BUCKET_REGION}
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
@@ -41,10 +55,18 @@ services:
       - sqlite_data:/data
       - logsink_data:/logsinks
     restart: unless-stopped
-    depends_on:
-      - server
     deploy:
       replicas: 3
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 60s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   frontend:
     image: skeptrune/jukebox-spa:v0.0.2

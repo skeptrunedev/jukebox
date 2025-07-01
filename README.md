@@ -47,6 +47,20 @@
 - Open source (MIT License)
 - Easy deployment with Docker
 
+### Docker Compose Deployments
+
+Spin up all services:
+
+```bash
+docker-compose up -d
+```
+
+Redeploy services with zero downtime after updating images:
+
+```bash
+bash ./redeploy.sh
+```
+
 ---
 
 ## Getting Started

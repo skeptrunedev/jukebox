@@ -15,7 +15,7 @@ COPY . .
 RUN yarn build
 
 # Expose API port
-EXPOSE 3001
+EXPOSE ${API_SERVER_PORT}
 
 # Run database migrations and start the server
 CMD ["sh", "-c", "yarn migrate && yarn start"]    

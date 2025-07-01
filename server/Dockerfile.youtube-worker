@@ -19,5 +19,8 @@ RUN yarn install --frozen-lockfile
 COPY . .
 RUN yarn build
 
+# Expose worker port
+EXPOSE ${WORKER_SERVER_PORT}
+
 # Run database migrations and start the YouTube worker
 CMD ["sh", "-c", "yarn start:worker"]

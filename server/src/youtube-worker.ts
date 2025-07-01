@@ -7,6 +7,7 @@ import ytdl from "@distube/ytdl-core";
 import { Upload } from "@aws-sdk/lib-storage";
 import { S3 } from "@aws-sdk/client-s3";
 import crypto from "crypto";
+import http from "http";
 
 const PROXY_USERNAME = process.env.PROXY_USERNAME;
 const PROXY_PASSWORD = process.env.PROXY_PASSWORD;
@@ -47,6 +48,16 @@ console.error = (...args: unknown[]) => {
   logStream.write(util.format(...args) + "\n");
   origErr(...args);
 };
+
+// Exit the process on unhandled errors so healthcheck server also stops
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+  process.exit(1);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled Rejection:", reason);
+  process.exit(1);
+});
 
 // Atomically get and claim a song for processing in a single transaction
 async function getAndClaimNextSong() {
@@ -303,10 +314,30 @@ async function workerLoop() {
       }
     } catch (err) {
       console.error("\x1b[31mWorker loop error:\x1b[0m", err);
+      // Exit the process on fatal worker error
+      process.exit(1);
     }
 
     await new Promise((res) => setTimeout(res, 100));
   }
 }
+
+// Healthcheck server
+const port = process.env.WORKER_SERVER_PORT
+  ? parseInt(process.env.WORKER_SERVER_PORT, 10)
+  : 8080;
+
+const healthServer = http.createServer((req, res) => {
+  if (req.url === "/health") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ status: "ok" }));
+  } else {
+    res.writeHead(404);
+    res.end();
+  }
+});
+healthServer.listen(port, () => {
+  console.log(`Healthcheck server listening on port ${port}`);
+});
 
 workerLoop();

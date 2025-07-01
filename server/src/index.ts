@@ -118,7 +118,7 @@ console.error = (...args: unknown[]) => {
  */
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.API_SERVER_PORT || 3001;
 
 app.use(
   cors({
@@ -1671,6 +1671,11 @@ app.get("/api/youtube/search", async (req, res, _next: NextFunction) => {
     console.error("YouTube search error:", error);
     res.status(500).json({ error: (error as Error).message });
   }
+});
+
+// Healthcheck route
+app.get("/healthz", (req, res) => {
+  res.status(200).json({ status: "ok" });
 });
 
 const server = http.createServer(app);
