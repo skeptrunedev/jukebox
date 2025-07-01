@@ -310,32 +310,21 @@ export default function HomePage() {
           </h2>
           <div className="space-y-8">
             <div>
-              <h3 className="text-2xl font-semibold mb-2">
-                v1.2.0 (2025-06-30)
-              </h3>
+              <h3 className="text-2xl font-semibold mb-2">v0.0.1 (2025-06-30)</h3>
               <ul className="list-disc list-inside text-lg ml-4">
-                <li>Added changelog section to homepage</li>
-                <li>Improved FAQ and feature descriptions</li>
-                <li>Minor UI/UX tweaks for mobile and desktop</li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-2xl font-semibold mb-2">v1.1.0</h3>
-              <ul className="list-disc list-inside text-lg ml-4">
-                <li>Added open source announcement and contribution info</li>
-                <li>Enhanced fairness algorithm for song queue</li>
-                <li>Improved onboarding flow for new users</li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-2xl font-semibold mb-2">v1.0.0</h3>
-              <ul className="list-disc list-inside text-lg ml-4">
-                <li>
-                  Initial release: create and join jukeboxes, add songs,
-                  collaborative playlists
-                </li>
-                <li>Mobile and desktop support</li>
-                <li>No login or app required</li>
+                <li>🎵 YouTube Integration: Search and add songs directly from YouTube</li>
+                <li>📱 Collaborative Playlists: Multiple users can add songs to shared jukeboxes</li>
+                <li>🎮 Built-in Player: Stream music via embedded YouTube player</li>
+                <li>🔍 Smart Search: Search YouTube's vast music library</li>
+                <li>📊 Playlist Management: Organize and manage your music collections</li>
+                <li>🖥️ <b>Frontend</b>: React + TypeScript + Vite app for a modern, responsive UI</li>
+                <li>🗄️ <b>Server</b>: Node.js + Express + TypeScript backend with REST API and OpenAPI/Swagger docs</li>
+                <li>⚙️ <b>Worker</b>: Dedicated YouTube audio worker for background processing</li>
+                <li>💾 SQLite database with Kysely query builder</li>
+                <li>🔗 Anonymous, no-login usage—just create a box and share a link</li>
+                <li>🆓 100% free, no ads, open source (MIT License)</li>
+                <li>🌐 Docker support for easy deployment</li>
+                <li>📦 Initial release of all core services: server, worker, and frontend</li>
               </ul>
             </div>
           </div>
