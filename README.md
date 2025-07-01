@@ -1,26 +1,53 @@
 # Jukebox
 
 <p align="center">
-  <a href="https://hub.docker.com/r/skeptrune/jukebox-server">
+  <a href="https://hub.docker.com/r/skeptrune/jukebox-server" style="text-decoration: none;">
     <img src="https://img.shields.io/docker/pulls/skeptrune/jukebox-server?style=flat-square" alt="Docker Pulls" />
   </a>
-  <a href="https://github.com/skeptrunedev/jukebox/stargazers">
+  <a href="https://github.com/skeptrunedev/jukebox/stargazers" style="text-decoration: none;">
     <img src="https://img.shields.io/github/stars/skeptrunedev/jukebox?style=flat-square" alt="GitHub stars" />
   </a>
-  <a href="https://x.com/skeptrune">
+  <a href="https://x.com/skeptrune" style="text-decoration: none;">
     <img src="https://img.shields.io/badge/follow%20on-x.com-1da1f2?logo=x&style=flat-square" alt="Follow on X (Twitter)" />
   </a>
 </p>
 
-A collaborative music jukebox app where users can add songs to shared playlists and play them via YouTube integration.
+---
+
+# Turn Any Device Into a Collaborative Jukebox
+
+**Jukebox** lets you instantly create a shared music playlist with friends—no app, no login, no ads. Just create a box, share a link, and start adding songs together. Perfect for parties, road trips, or any group hangout!
+
+- 🌐 **Open Source Alternative to Spotify Collaborative Playlists**
+- 🕵️ **No Account Needed**: Use anonymously—no sign up or email required
+- ✨ **Share a Link, Add Songs Together**: Everyone can contribute in real time
+- 🚀 **No App Download Required**: Works on any device, right in your browser
+- 🎵 **YouTube Integration**: Search and play almost any song instantly
+- 📱 **Mobile Friendly**: Designed for phones, tablets, and desktops
+- ⚖️ **Fair Queueing**: Songs are auto-sorted so everyone gets a turn
+- 🆓 **100% Free, No Ads**
+
+---
+
+## Try It Now
+
+1. **Create a Jukebox**: Visit the homepage and create a new box
+2. **Share the Link**: Send the invite link to your friends
+3. **Add Songs**: Search YouTube or add songs manually
+4. **Play Music**: Use the built-in player to stream together
+
+---
 
 ## Features
 
-- 🎵 **YouTube Integration**: Search and add songs directly from YouTube
-- 📱 **Collaborative Playlists**: Multiple users can add songs to shared jukeboxes
-- 🎮 **Built-in Player**: Stream music via embedded YouTube player
-- 🔍 **Smart Search**: Search YouTube's vast music library
-- 📊 **Playlist Management**: Organize and manage your music collections
+- Collaborative playlists: Add, queue, and play songs together
+- Anonymous usage: No login or account required
+- YouTube search & playback: Access a huge music library
+- Mobile-first, responsive UI
+- Open source (MIT License)
+- Easy deployment with Docker
+
+---
 
 ## Getting Started
 
@@ -40,137 +67,54 @@ A collaborative music jukebox app where users can add songs to shared playlists 
 
 ### Installation
 
-1. Clone the repository:
-
 ```bash
+# Clone the repository
 git clone <your-repo-url>
 cd jukebox
-```
 
-2. Install server dependencies:
-
-```bash
+# Install server dependencies
 cd server
-npm install
-```
+yarn install
 
-3. Install frontend dependencies:
-
-```bash
+# Install frontend dependencies
 cd ../frontend
-npm install
-```
+yarn install
 
-4. Configure environment variables:
-
-```bash
+# Configure environment variables
 cd ../server
 cp .env.example .env
 # Edit .env and add your YouTube API key
-```
 
-5. Run database migrations:
+# Run database migrations
+yarn migrate
 
-```bash
-npm run migrate
-```
-
-6. Start the development servers:
-
-Backend:
-
-```bash
+# Start the development servers
+# Backend:
 cd server
-npm run dev
-```
-
-Frontend (in a new terminal):
-
-```bash
+yarn dev
+# Worker:
+cd server
+yarn dev:worker
+# Frontend (in a new terminal):
 cd frontend
-npm run dev
+yarn dev
 ```
 
-## Usage
-
-1. **Create a Jukebox**: Visit the homepage and create a new jukebox
-2. **Share the Link**: Copy the share link and send it to friends
-3. **Add Songs**: Use the YouTube search to find and add songs, or add them manually
-4. **Play Music**: Use the built-in player to stream songs via YouTube
-
-## API Endpoints
-
-- `GET /api/boxes` - List all jukeboxes
-- `POST /api/boxes` - Create a new jukebox
-- `GET /api/songs` - List all songs
-- `POST /api/songs` - Add a song (with YouTube data)
-- `GET /api/youtube/search` - Search YouTube for songs
-- `GET /api/box_songs` - Get playlist relationships
-
-## YouTube Integration
-
-Songs added via YouTube search include:
-
-- Video ID for embedded playback
-- Thumbnail images
-- Duration information
-- Direct YouTube URLs
-
-Songs can also be added manually without YouTube integration, but won't be playable in the built-in player.
-
-## Tech Stack
-
-- **Frontend**: React, TypeScript, Vite, Tailwind CSS
-- **Backend**: Node.js, Express, TypeScript
-- **Database**: SQLite with Kysely query builder
-- **APIs**: YouTube Data API v3
-- **Player**: YouTube Embed API
+---
 
 ## License
 
 MIT
 
-## Setup
+---
 
-Install dependencies for both services:
+## Contributing & Feedback
 
-```bash
-# Frontend
-cd frontend
-npm install
+- Open an issue or pull request on [GitHub](https://github.com/skeptrunedev/jukebox)
+- Feature requests? DM [@skeptrune on X (Twitter)](https://twitter.com/skeptrun)
 
-# Server
-cd ../server
-npm install
-```
+---
 
-## Running in development
+## Changelog
 
-Start both services in separate terminals:
-
-```bash
-# Terminal 1 (frontend)
-cd frontend
-npm run dev
-
-# Terminal 2 (server)
-cd server
-npm run dev
-```
-
-The React app will be available at http://localhost:5173 and the server at http://localhost:3001.
-
-API requests from the frontend to `/api/*` will be proxied to the server.
-
-## Building for production
-
-```bash
-# Frontend
-cd frontend
-npm run build
-
-# Server
-cd server
-npm run build
-npm start
-```
+See the [Changelog](https://jukebox.skeptrune.com#changelog) for the latest updates and features.

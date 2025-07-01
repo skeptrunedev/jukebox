@@ -1,8 +1,6 @@
 services:
   server:
-    build:
-      context: ./server
-      dockerfile: Dockerfile.server
+    image: skeptrune/jukebox-server:v0.0.1
     ports:
       - "${SERVER_PORT}:${SERVER_INTERNAL_PORT}"
     env_file:
@@ -25,9 +23,7 @@ services:
     restart: unless-stopped
 
   worker:
-    build:
-      context: ./server
-      dockerfile: Dockerfile.youtube-worker
+    image: skeptrune/jukebox-worker:v0.0.1
     env_file:
       - .env
     environment:
@@ -51,9 +47,7 @@ services:
       replicas: 3
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: skeptrune/jukebox-spa:v0.0.1
     env_file:
       - .env
     ports:

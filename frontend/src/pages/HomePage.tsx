@@ -184,7 +184,10 @@ export default function HomePage() {
       </div>
       {/* FAQ Section */}
       <div className="w-full bg-main-light py-16 flex flex-col items-center border-b-4 border-black px-5">
-        <h2 className="text-3xl md:text-4xl font-bold mb-8 text-center">
+        <h2
+          id="faq"
+          className="text-3xl md:text-4xl font-bold mb-8 text-center"
+        >
           Frequently asked questions
         </h2>
         <div className="w-full max-w-xl flex flex-col gap-4">
@@ -251,7 +254,7 @@ export default function HomePage() {
         <div className="flex flex-col justify-center p-8 min-h-[220px] border-b-4 border-black md:border-b-0 md:border-r-4 bg-main-light">
           <div className="flex items-center mb-4">
             <CircleBallIcon className="mr-4 w-10 h-10 text-black" />
-            <span className="text-2xl font-bold text-black">
+            <span id="who-made-this" className="text-2xl font-bold text-black">
               Who made this?
             </span>
           </div>
@@ -265,7 +268,9 @@ export default function HomePage() {
         <div className="flex flex-col bg-main justify-center p-8 min-h-[220px] border-black">
           <div className="flex items-center mb-4">
             <OpensourceIcon className="mr-4 w-10 h-10 text-black" />
-            <span className="text-2xl font-bold text-black">Open Source</span>
+            <span id="open-source" className="text-2xl font-bold text-black">
+              Open Source
+            </span>
           </div>
           <p className="text-lg text-black">
             I have some ideas for where this could go! Maybe adding a song could
@@ -277,7 +282,10 @@ export default function HomePage() {
         <div className="flex flex-col bg-main-light lg:bg-main justify-center p-8 min-h-[220px] border-t-4 border-black md:border-b-0 md:border-r-4">
           <div className="flex items-center mb-4">
             <FanIcon className="mr-4 w-10 h-10 text-black" fill="black" />
-            <span className="text-2xl font-bold text-black">
+            <span
+              id="what-does-this-do"
+              className="text-2xl font-bold text-black"
+            >
               What does this do?
             </span>
           </div>
@@ -291,7 +299,10 @@ export default function HomePage() {
         <div className="flex flex-col justify-center p-8 min-h-[220px] border-t-4 bg-main md:bg-main-light">
           <div className="flex items-center mb-4">
             <SpikeIcon className="mr-4 w-10 h-10 text-black" />
-            <span className="text-2xl font-bold text-black">
+            <span
+              id="fair-for-large-group"
+              className="text-2xl font-bold text-black"
+            >
               Is it fair if I have a large group?
             </span>
           </div>
@@ -305,26 +316,57 @@ export default function HomePage() {
       {/* Changelog Section */}
       <div className="w-full flex flex-col items-center py-16 border-t-4 px-5">
         <Card className="w-full max-w-xl p-8 bg-white border-2 border-black shadow-md">
-          <h2 className="text-3xl md:text-4xl font-bold mb-8 text-center">
+          <h2
+            id="changelog"
+            className="text-3xl md:text-4xl font-bold mb-8 text-center"
+          >
             Changelog
           </h2>
           <div className="space-y-8">
             <div>
-              <h3 className="text-2xl font-semibold mb-2">v0.0.1 (2025-06-30)</h3>
+              <h3 id="changelog-v0-0-1" className="text-2xl font-semibold mb-2">
+                v0.0.1 (2025-06-30)
+              </h3>
               <ul className="list-disc list-inside text-lg ml-4">
-                <li>🎵 YouTube Integration: Search and add songs directly from YouTube</li>
-                <li>📱 Collaborative Playlists: Multiple users can add songs to shared jukeboxes</li>
-                <li>🎮 Built-in Player: Stream music via embedded YouTube player</li>
+                <li>
+                  🎵 YouTube Integration: Search and add songs directly from
+                  YouTube
+                </li>
+                <li>
+                  📱 Collaborative Playlists: Multiple users can add songs to
+                  shared jukeboxes
+                </li>
+                <li>
+                  🎮 Built-in Player: Stream music via embedded YouTube player
+                </li>
                 <li>🔍 Smart Search: Search YouTube's vast music library</li>
-                <li>📊 Playlist Management: Organize and manage your music collections</li>
-                <li>🖥️ <b>Frontend</b>: React + TypeScript + Vite app for a modern, responsive UI</li>
-                <li>🗄️ <b>Server</b>: Node.js + Express + TypeScript backend with REST API and OpenAPI/Swagger docs</li>
-                <li>⚙️ <b>Worker</b>: Dedicated YouTube audio worker for background processing</li>
+                <li>
+                  📊 Playlist Management: Organize and manage your music
+                  collections
+                </li>
+                <li>
+                  🖥️ <b>Frontend</b>: React + TypeScript + Vite app for a
+                  modern, responsive UI
+                </li>
+                <li>
+                  🗄️ <b>Server</b>: Node.js + Express + TypeScript backend with
+                  REST API and OpenAPI/Swagger docs
+                </li>
+                <li>
+                  ⚙️ <b>Worker</b>: Dedicated YouTube audio worker for
+                  background processing
+                </li>
                 <li>💾 SQLite database with Kysely query builder</li>
-                <li>🔗 Anonymous, no-login usage—just create a box and share a link</li>
+                <li>
+                  🔗 Anonymous, no-login usage—just create a box and share a
+                  link
+                </li>
                 <li>🆓 100% free, no ads, open source (MIT License)</li>
                 <li>🌐 Docker support for easy deployment</li>
-                <li>📦 Initial release of all core services: server, worker, and frontend</li>
+                <li>
+                  📦 Initial release of all core services: server, worker, and
+                  frontend
+                </li>
               </ul>
             </div>
           </div>
