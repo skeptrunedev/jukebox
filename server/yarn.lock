@@ -1407,6 +1407,13 @@
   dependencies:
     undici-types "~7.8.0"
 
+"@types/nodemailer@^6.4.17":
+  version "6.4.17"
+  resolved "https://registry.yarnpkg.com/@types/nodemailer/-/nodemailer-6.4.17.tgz#5c82a42aee16a3dd6ea31446a1bd6a447f1ac1a4"
+  integrity sha512-I9CCaIp6DTldEg7vyUTZi8+9Vo0hi1/T8gv3C89yk1rSAAzoKQ8H8ki/jBYJSFoH/BisgLP8tkZMlQ91CIquww==
+  dependencies:
+    "@types/node" "*"
+
 "@types/qs@*":
   version "6.14.0"
   resolved "https://registry.npmjs.org/@types/qs/-/qs-6.14.0.tgz"
@@ -3272,6 +3279,11 @@ node-gyp@8.x:
     semver "^7.3.5"
     tar "^6.1.2"
     which "^2.0.2"
+
+nodemailer@^7.0.4:
+  version "7.0.4"
+  resolved "https://registry.yarnpkg.com/nodemailer/-/nodemailer-7.0.4.tgz#1204ca673026e93155d4a46eaa7c498a30fdd72a"
+  integrity sha512-9O00Vh89/Ld2EcVCqJ/etd7u20UhME0f/NToPfArwPEe1Don1zy4mAIz6ariRr7mJ2RDxtaDzN0WJVdVXPtZaw==
 
 nopt@^5.0.0:
   version "5.0.0"

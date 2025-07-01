@@ -8,6 +8,53 @@ import { Upload } from "@aws-sdk/lib-storage";
 import { S3 } from "@aws-sdk/client-s3";
 import crypto from "crypto";
 import http from "http";
+import nodemailer from "nodemailer";
+// SMTP email sender setup
+const smtpTransport = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587,
+  secure: process.env.SMTP_SECURE === "true", // true for SSL/TLS, false for STARTTLS or plain
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASSWORD,
+  },
+});
+
+const SMTP_FROM_EMAIL = process.env.SMTP_FROM_EMAIL;
+
+async function sendFailureEmail(youtube_id: string, err: any) {
+  if (!SMTP_FROM_EMAIL) return;
+  const mailOptions = {
+    from: SMTP_FROM_EMAIL,
+    to: SMTP_FROM_EMAIL, // send to self; customize as needed
+    subject: `Jukebox: Song upload failed for YouTube ID ${youtube_id}`,
+    text: `Song upload failed for YouTube ID: ${youtube_id}\n\nError: ${
+      err?.message || err
+    }`,
+  };
+  try {
+    await smtpTransport.sendMail(mailOptions);
+    console.log(`Failure email sent for ${youtube_id}`);
+  } catch (emailErr) {
+    console.error("Failed to send failure email:", emailErr);
+  }
+}
+
+async function sendSuccessEmail(youtube_id: string) {
+  if (!SMTP_FROM_EMAIL) return;
+  const mailOptions = {
+    from: SMTP_FROM_EMAIL,
+    to: SMTP_FROM_EMAIL, // send to self; customize as needed
+    subject: `Jukebox: Song upload succeeded for YouTube ID ${youtube_id}`,
+    text: `Song upload succeeded for YouTube ID: ${youtube_id}`,
+  };
+  try {
+    await smtpTransport.sendMail(mailOptions);
+    console.log(`Success email sent for ${youtube_id}`);
+  } catch (emailErr) {
+    console.error("Failed to send success email:", emailErr);
+  }
+}
 
 const PROXY_USERNAME = process.env.PROXY_USERNAME;
 const PROXY_PASSWORD = process.env.PROXY_PASSWORD;
@@ -127,6 +174,7 @@ async function getRetryCount(youtube_id: string) {
 
 async function workerLoop() {
   while (true) {
+    // Uncomment the next line to force an error and test failure emails
     try {
       const song = await getAndClaimNextSong();
       if (!song) {
@@ -271,6 +319,7 @@ async function workerLoop() {
             console.log(
               `\x1b[32mUploaded ${youtube_id} to S3 as ${s3Key}\x1b[0m`
             );
+            await sendSuccessEmail(youtube_id);
             return;
           } catch (err) {
             throw err;
@@ -287,7 +336,7 @@ async function workerLoop() {
           .where("status", "=", "processing")
           .executeTakeFirst();
         const currentRetry = statusRow?.retry_count ?? 0;
-        if (currentRetry < 10) {
+        if (currentRetry < 3) {
           await db
             .updateTable("song_youtube_status")
             .set({
@@ -310,6 +359,7 @@ async function workerLoop() {
             .where("youtube_id", "=", youtube_id)
             .where("status", "=", "processing")
             .execute();
+          await sendFailureEmail(youtube_id, err);
         }
       }
     } catch (err) {
