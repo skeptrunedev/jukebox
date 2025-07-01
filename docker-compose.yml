@@ -1,6 +1,6 @@
 services:
   server:
-    image: skeptrune/jukebox-server:v0.0.1
+    image: skeptrune/jukebox-server:v0.0.2
     ports:
       - "${SERVER_PORT}:${SERVER_INTERNAL_PORT}"
     env_file:
@@ -23,7 +23,7 @@ services:
     restart: unless-stopped
 
   worker:
-    image: skeptrune/jukebox-worker:v0.0.1
+    image: skeptrune/jukebox-worker:v0.0.2
     env_file:
       - .env
     environment:
@@ -47,7 +47,7 @@ services:
       replicas: 3
 
   frontend:
-    image: skeptrune/jukebox-spa:v0.0.1
+    image: skeptrune/jukebox-spa:v0.0.2
     env_file:
       - .env
     ports:

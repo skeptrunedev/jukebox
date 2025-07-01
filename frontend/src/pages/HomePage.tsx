@@ -324,6 +324,32 @@ export default function HomePage() {
           </h2>
           <div className="space-y-8">
             <div>
+              <h3 id="changelog-v0-0-2" className="text-2xl font-semibold mb-2">
+                v0.0.2 (2025-06-30)
+              </h3>
+              <ul className="list-disc list-inside text-lg ml-4">
+                <li>
+                  ✨ Enhanced UI with <b>framer-motion</b> animations for a
+                  smoother experience in PlayPage and SharePage
+                </li>
+                <li>
+                  ☁️ Added <b>MinIO S3</b> support in Docker Compose—no external
+                  S3 needed for VPS deployments
+                </li>
+                <li>
+                  🔄 Streamlined S3 upload process and improved error handling
+                  in YouTube worker
+                </li>
+                <li>
+                  📄 Updated README with new features, usage instructions, and
+                  badges for Docker pulls, GitHub stars, and social media
+                </li>
+                <li>
+                  🐳 Improved Docker Compose for better service image management
+                </li>
+              </ul>
+            </div>
+            <div>
               <h3 id="changelog-v0-0-1" className="text-2xl font-semibold mb-2">
                 v0.0.1 (2025-06-30)
               </h3>
