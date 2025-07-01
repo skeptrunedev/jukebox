@@ -9,6 +9,7 @@ import SongSearch from "@/components/SongSearch";
 import { Copy, Check, X, Play, Clock } from "lucide-react";
 import type { SongRow } from "@/lib/player";
 import { useJukebox } from "@/hooks/useJukeboxContext";
+import { motion } from "framer-motion";
 
 export default function PlayPage() {
   const { box, rows, setRows, addSong, currentSongIndex } = useJukebox();
@@ -68,66 +69,92 @@ export default function PlayPage() {
   return (
     <div className="flex flex-1 items-center justify-center p-5 w-full bg-background/40">
       <div className="mx-auto w-[1300px] max-w-full space-y-6">
-        <Card className="bg-white text-foreground">
-          <CardContent>
-            <div className="space-y-3">
-              <h3 className="text-lg font-semibold">Share this Jukebox</h3>
-              <p className="text-sm text-muted-foreground">
-                Share this link so others can add songs to this jukebox
-              </p>
-              <div className="flex gap-2 items-center">
-                <span
-                  className="flex-1 font-mono text-sm bg-muted px-3 py-1.5 rounded select-all cursor-pointer border-border border-2"
-                  title={shareUrl || ""}
-                  onClick={() => {
-                    if (shareUrl) navigator.clipboard.writeText(shareUrl);
-                  }}
-                >
-                  {shareUrl}
-                </span>
-                <Button
-                  onClick={handleCopyUrl}
-                  variant="neutral"
-                  size="sm"
-                  className="w-24 text-left"
-                >
-                  {copyButtonText}
-                </Button>
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
+        >
+          <Card className="bg-white text-foreground">
+            <CardContent>
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold">Share this Jukebox</h3>
+                <p className="text-sm text-muted-foreground">
+                  Share this link so others can add songs to this jukebox
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center w-full max-w-full">
+                  <span
+                    className="flex-1 font-mono text-sm bg-muted px-3 py-1.5 rounded select-all cursor-pointer border-border border-2 w-full sm:w-fit overflow-x-auto whitespace-nowrap"
+                    title={shareUrl || ""}
+                    onClick={() => {
+                      if (shareUrl) navigator.clipboard.writeText(shareUrl);
+                    }}
+                    style={{ WebkitOverflowScrolling: "touch" }}
+                  >
+                    {shareUrl}
+                  </span>
+                  <Button
+                    onClick={handleCopyUrl}
+                    variant="neutral"
+                    size="sm"
+                    className="w-full sm:w-24 text-left"
+                  >
+                    {copyButtonText}
+                  </Button>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <YouTubePlayer />
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
+        >
+          <YouTubePlayer />
+        </motion.div>
 
-        <Card className="bg-white text-foreground">
-          <CardContent>
-            <div className="space-y-3">
-              <h3 className="text-lg font-semibold">Add Songs</h3>
-              <p className="text-sm text-muted-foreground">
-                Search for songs on YouTube to add to your jukebox
-              </p>
-              <SongSearch onSongSelect={addSong} />
-            </div>
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
+        >
+          <Card className="bg-white text-foreground">
+            <CardContent>
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold">Add Songs</h3>
+                <p className="text-sm text-muted-foreground">
+                  Search for songs on YouTube to add to your jukebox
+                </p>
+                <SongSearch onSongSelect={addSong} />
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <Card className="bg-white text-foreground">
-          <CardContent>
-            <div className="space-y-3">
-              <h3 className="text-lg font-semibold">Playlist</h3>
-              <InteractiveSongTable
-                rows={rows}
-                columns={columns}
-                onOrderChange={setRows}
-                getRowProps={(row, index) => ({
-                  key: row.id,
-                  className: currentSongIndex === index ? "bg-neutral-100" : "",
-                })}
-              />
-            </div>
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
+        >
+          <Card className="bg-white text-foreground">
+            <CardContent>
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold">Playlist</h3>
+                <InteractiveSongTable
+                  rows={rows}
+                  columns={columns}
+                  onOrderChange={setRows}
+                  getRowProps={(row, index) => ({
+                    key: row.id,
+                    className:
+                      currentSongIndex === index ? "bg-neutral-100" : "",
+                  })}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     </div>
   );

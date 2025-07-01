@@ -5,6 +5,7 @@ import { Play, Pause, SkipForward, SkipBack } from "lucide-react";
 import { useJukebox } from "@/hooks/useJukeboxContext";
 import { updateBoxSong, getYouTubeAudioSignedUrl } from "@/sdk";
 import type { SongRow } from "@/lib/player";
+import { motion } from "framer-motion";
 
 export const YouTubePlayer = () => {
   const { songs, currentSongIndex, goToPrevious, goToNext } = useJukebox();
@@ -58,15 +59,14 @@ export const YouTubePlayer = () => {
         } else {
           setIsLoading(true);
           setMediaUrl(null);
-          // Re-poll after a delay if no URL yet
+          // Re-poll after yet
           pollTimeoutRef.current = setTimeout(poll, 2000);
         }
       } catch (e: unknown) {
         console.error("Failed to get YouTube audio signed URL:", e);
         setIsLoading(true);
         setMediaUrl(null);
-        // Re-poll after a delay on error
-        pollTimeoutRef.current = setTimeout(poll, 2000);
+        // Re-poll after current = setTimeout(poll, 2000);
       }
     };
     poll();
@@ -304,125 +304,154 @@ export const YouTubePlayer = () => {
     };
   }, [currentSong, isLoading, isPlaying, handlePlayPause]);
 
-  if (!currentSong) {
-    return (
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
+    >
       <Card className="bg-white text-foreground">
         <CardContent className="p-6">
-          <div className="text-center text-gray-500">
-            <p>No playable songs in this playlist</p>
-            <p className="text-sm mt-2">
-              Please add songs to your jukebox to start listening.
-            </p>
+          <div className="space-y-4">
+            {/* Crossfade between no-song and player UI */}
+            <motion.div
+              initial={false}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+            >
+              {currentSong ? (
+                <motion.div
+                  key="player"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  {/* Hidden audio element */}
+                  <audio
+                    ref={audioRef}
+                    preload="auto"
+                    crossOrigin="anonymous"
+                  />
+                  {/* Song Info */}
+                  <div className="flex items-center gap-4">
+                    {currentSong.thumbnail_url && (
+                      <img
+                        src={currentSong.thumbnail_url}
+                        alt={currentSong?.title ?? "Song Thumbnail"}
+                        className="w-16 h-12 object-cover rounded"
+                      />
+                    )}
+                    <div className="flex-1">
+                      <h3
+                        className="font-semibold text-lg"
+                        dangerouslySetInnerHTML={{
+                          __html: currentSong.title ?? "Unknown Title",
+                        }}
+                      />
+                      <p
+                        className="text-gray-600"
+                        dangerouslySetInnerHTML={{
+                          __html: currentSong.artist ?? "Unknown Artist",
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {/* Progress Bar */}
+                  <div className="space-y-2 mt-4">
+                    <div
+                      className="w-full bg-gray-200 rounded-full h-2 cursor-pointer"
+                      onClick={handleSeek}
+                    >
+                      <div
+                        className="bg-main h-2 rounded-full transition-all duration-100"
+                        style={{
+                          width:
+                            duration > 0
+                              ? `${(currentTime / duration) * 100}%`
+                              : "0%",
+                        }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>{formatTime(currentTime)}</span>
+                      <span>{formatTime(duration)}</span>
+                    </div>
+                  </div>
+                  {/* Player Controls */}
+                  <div className="flex items-center justify-center gap-4 mt-4">
+                    <Button
+                      variant="neutral"
+                      size="sm"
+                      onClick={handlePrevious}
+                      disabled={currentSongIndex === 0}
+                    >
+                      <SkipBack className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      onClick={handlePlayPause}
+                      className="w-12 h-12 rounded-full"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : isPlaying ? (
+                        <Pause className="h-6 w-6" />
+                      ) : (
+                        <Play className="h-6 w-6" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="neutral"
+                      size="sm"
+                      onClick={handleNext}
+                      disabled={currentSongIndex === songs.length - 1}
+                    >
+                      <SkipForward className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {/* Playlist Info */}
+                  <div className="text-center text-sm text-gray-600 mt-4">
+                    Playing {currentSongIndex + 1} of {songs.length}
+                  </div>
+                  {/* User interaction message */}
+                  {!hasInteracted && !isPlaying && !isLoading && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+                      className="text-center text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200 mt-4"
+                    >
+                      <p className="font-medium">Ready to play!</p>
+                      <p>
+                        Click the play button above to start listening to your
+                        jukebox.
+                      </p>
+                    </motion.div>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="no-song"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  <div className="text-center text-gray-500 flex flex-col items-center justify-center min-h-[180px]">
+                    <p>No playable songs in this playlist</p>
+                    <p className="text-sm mt-2">
+                      Please add songs to your jukebox to start listening.
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
           </div>
         </CardContent>
       </Card>
-    );
-  }
-
-  return (
-    <Card className="bg-white text-foreground">
-      <CardContent className="p-6">
-        <div className="space-y-4">
-          {/* Hidden audio element */}
-          <audio ref={audioRef} preload="auto" crossOrigin="anonymous" />
-
-          {/* Song Info */}
-          <div className="flex items-center gap-4">
-            {currentSong.thumbnail_url && (
-              <img
-                src={currentSong.thumbnail_url}
-                alt={currentSong?.title ?? "Song Thumbnail"}
-                className="w-16 h-12 object-cover rounded"
-              />
-            )}
-            <div className="flex-1">
-              <h3
-                className="font-semibold text-lg"
-                dangerouslySetInnerHTML={{
-                  __html: currentSong.title ?? "Unknown Title",
-                }}
-              />
-              <p
-                className="text-gray-600"
-                dangerouslySetInnerHTML={{
-                  __html: currentSong.artist ?? "Unknown Artist",
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="space-y-2">
-            <div
-              className="w-full bg-gray-200 rounded-full h-2 cursor-pointer"
-              onClick={handleSeek}
-            >
-              <div
-                className="bg-main h-2 rounded-full transition-all duration-100"
-                style={{
-                  width:
-                    duration > 0 ? `${(currentTime / duration) * 100}%` : "0%",
-                }}
-              />
-            </div>
-            <div className="flex justify-between text-xs text-gray-500">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
-            </div>
-          </div>
-
-          {/* Player Controls */}
-          <div className="flex items-center justify-center gap-4">
-            <Button
-              variant="neutral"
-              size="sm"
-              onClick={handlePrevious}
-              disabled={currentSongIndex === 0}
-            >
-              <SkipBack className="h-4 w-4" />
-            </Button>
-
-            <Button
-              onClick={handlePlayPause}
-              className="w-12 h-12 rounded-full"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : isPlaying ? (
-                <Pause className="h-6 w-6" />
-              ) : (
-                <Play className="h-6 w-6" />
-              )}
-            </Button>
-
-            <Button
-              variant="neutral"
-              size="sm"
-              onClick={handleNext}
-              disabled={currentSongIndex === songs.length - 1}
-            >
-              <SkipForward className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* User interaction message */}
-          {!hasInteracted && !isPlaying && !isLoading && (
-            <div className="text-center text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
-              <p className="font-medium">Ready to play!</p>
-              <p>
-                Click the play button above to start listening to your jukebox.
-              </p>
-            </div>
-          )}
-
-          {/* Playlist Info */}
-          <div className="text-center text-sm text-gray-600">
-            Playing {currentSongIndex + 1} of {songs.length}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    </motion.div>
   );
 };
 
