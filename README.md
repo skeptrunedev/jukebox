@@ -1,5 +1,17 @@
 # Jukebox
 
+<p align="center">
+  <a href="https://hub.docker.com/r/skeptrune/jukebox-server">
+    <img src="https://img.shields.io/docker/pulls/skeptrune/jukebox-server?style=flat-square" alt="Docker Pulls" />
+  </a>
+  <a href="https://github.com/skeptrunedev/jukebox/stargazers">
+    <img src="https://img.shields.io/github/stars/skeptrunedev/jukebox?style=flat-square" alt="GitHub stars" />
+  </a>
+  <a href="https://x.com/skeptrune">
+    <img src="https://img.shields.io/badge/follow%20on-x.com-1da1f2?logo=x&style=flat-square" alt="Follow on X (Twitter)" />
+  </a>
+</p>
+
 A collaborative music jukebox app where users can add songs to shared playlists and play them via YouTube integration.
 
 ## Features
@@ -14,7 +26,7 @@ A collaborative music jukebox app where users can add songs to shared playlists 
 
 ### Prerequisites
 
-- Node.js 16+ 
+- Node.js 16+
 - npm or yarn
 - YouTube Data API v3 key (free from Google)
 
@@ -29,24 +41,28 @@ A collaborative music jukebox app where users can add songs to shared playlists 
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone <your-repo-url>
 cd jukebox
 ```
 
 2. Install server dependencies:
+
 ```bash
 cd server
 npm install
 ```
 
 3. Install frontend dependencies:
+
 ```bash
 cd ../frontend
 npm install
 ```
 
 4. Configure environment variables:
+
 ```bash
 cd ../server
 cp .env.example .env
@@ -54,6 +70,7 @@ cp .env.example .env
 ```
 
 5. Run database migrations:
+
 ```bash
 npm run migrate
 ```
@@ -61,12 +78,14 @@ npm run migrate
 6. Start the development servers:
 
 Backend:
+
 ```bash
 cd server
 npm run dev
 ```
 
 Frontend (in a new terminal):
+
 ```bash
 cd frontend
 npm run dev
@@ -91,6 +110,7 @@ npm run dev
 ## YouTube Integration
 
 Songs added via YouTube search include:
+
 - Video ID for embedded playback
 - Thumbnail images
 - Duration information
