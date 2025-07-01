@@ -324,6 +324,29 @@ export default function HomePage() {
           </h2>
           <div className="space-y-8">
             <div>
+              <h3 id="changelog-v0-0-3" className="text-2xl font-semibold mb-2">
+                v0.0.3 (2025-07-01)
+              </h3>
+              <ul className="list-disc list-inside text-lg ml-4">
+                <li>
+                  ❤️ Added <b>healthchecks</b> to server and worker services for
+                  better reliability
+                </li>
+                <li>
+                  🔁 Ensured <b>server</b> and <b>worker</b> auto-restart via
+                  Docker Compose for easier deployment and maintenance
+                </li>
+                <li>
+                  🛠️ Improved environment variable management and added worker
+                  configurations for <b>worker1</b>, <b>worker2</b>, and{" "}
+                  <b>worker3</b>
+                </li>
+                <li>
+                  🚀 Added <b>redeploy script</b> for streamlined updates
+                </li>
+              </ul>
+            </div>
+            <div>
               <h3 id="changelog-v0-0-2" className="text-2xl font-semibold mb-2">
                 v0.0.2 (2025-06-30)
               </h3>
