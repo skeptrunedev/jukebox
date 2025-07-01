@@ -339,6 +339,10 @@ export default function HomePage() {
                   🆕 <b>Box update endpoint</b> now accepts <b>slug</b> or{" "}
                   <b>id</b> and has improved error handling
                 </li>
+                <li>
+                  📊 Added <b>Plausible Analytics</b> for privacy-friendly usage
+                  stats
+                </li>
               </ul>
             </div>
             <div>
