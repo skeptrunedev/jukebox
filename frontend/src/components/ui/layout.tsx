@@ -214,13 +214,11 @@ export function Layout({ children }: LayoutProps) {
                   </svg>
                 </a>
               </Button>
-              {user && (
-                <Button asChild size="icon" className="bg-white">
-                  <Link to="/profile">
-                    <UserIcon className="size-5" />
-                  </Link>
-                </Button>
-              )}
+              <Button asChild size="icon" className="bg-white">
+                <Link to="/profile">
+                  <UserIcon className="size-5" />
+                </Link>
+              </Button>
             </div>
           </div>
         </nav>
