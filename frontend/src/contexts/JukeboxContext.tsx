@@ -167,7 +167,9 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
       );
       if (playingIndex !== -1 && playingIndex) {
         setCurrentSongIndex((prevIndex) =>
-          prevIndex !== playingIndex ? playingIndex : prevIndex
+          prevIndex === 0 && prevIndex !== playingIndex
+            ? playingIndex
+            : prevIndex
         );
       }
     } catch (error) {
