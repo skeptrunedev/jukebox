@@ -1,4 +1,6 @@
-# Jukebox
+<p align="center">
+  <img height="500" src="frontend/public/opengraph-image.jpg" alt="Trieve Logo">
+</p>
 
 <p align="center">
   <a href="https://hub.docker.com/r/skeptrune/jukebox-server" style="text-decoration: none;">
