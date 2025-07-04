@@ -122,8 +122,8 @@ export default function HomePage() {
           {/* Right: Portrait Video Card with CTA below video */}
           <Card className="flex-[1] flex flex-col items-center justify-center p-4 sm:p-8 bg-white rounded-2xl shadow-md w-full max-w-[400px] gap-0">
             <h2 className="text-xl md:text-2xl font-semibold text-foreground mb-4 text-center">
-              Just two steps. Create a box and share a link for your friends to
-              join and add songs.
+              Create a box and share a link for your friends to join and add
+              songs.
             </h2>
             <div className="w-full justify-center flex">
               <CreateBoxDialog
@@ -142,7 +142,11 @@ export default function HomePage() {
                   style={{ pointerEvents: "auto" }}
                 ></iframe>
                 <style>{`
-                  .ytp-chrome-top.ytp-show-cards-title, .ytp-gradient-top {
+                  .ytp-gradient-top {
+                    display: none !important;
+                  }
+
+                  .ytp-chrome-top {
                     display: none !important;
                   }
 

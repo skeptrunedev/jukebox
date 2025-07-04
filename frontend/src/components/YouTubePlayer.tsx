@@ -45,6 +45,7 @@ export const YouTubePlayer = () => {
     let cancelled = false;
     setMediaUrl(null);
     setIsLoading(true);
+    setIsPlaying(false);
     lastPolledIdRef.current = currentSong.youtube_id;
 
     const poll = async () => {

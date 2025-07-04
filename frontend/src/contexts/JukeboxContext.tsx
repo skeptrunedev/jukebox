@@ -67,7 +67,7 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
   const [rows, setRows] = useState<SongRow[]>([]);
   const songs = usePlayerSongs(rows);
   const [loading, setLoading] = useState(true);
-  const [currentSongIndex, setCurrentSongIndex] = useState(0);
+  const [currentSongIndex, setCurrentSongIndex] = useState(-1);
   const [page, setPage] = useState(0);
   const [fingerprint, setFingerprint] = useState<string | undefined>();
   const [user, setUser] = useState<User | undefined>();
@@ -167,7 +167,7 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
       );
       if (playingIndex !== -1 && playingIndex) {
         setCurrentSongIndex((prevIndex) =>
-          prevIndex === 0 && prevIndex !== playingIndex
+          prevIndex === -1 && prevIndex !== playingIndex
             ? playingIndex
             : prevIndex
         );
