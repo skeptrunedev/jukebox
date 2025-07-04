@@ -162,10 +162,17 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
       });
 
       // set the current song index to the first playing song or the first queued song
-      const playingIndex = newSongRows.findIndex(
+      let playingIndex = newSongRows.findIndex(
         (row) => row.status === "playing" || row.status === "queued"
       );
-      if (playingIndex !== -1 && playingIndex) {
+      if (newSongRows.length && playingIndex === -1) {
+        playingIndex = 0;
+      }
+      if (playingIndex !== undefined && playingIndex !== -1) {
+        console.log(
+          "Setting current song index to playing or queued song:",
+          playingIndex
+        );
         setCurrentSongIndex((prevIndex) =>
           prevIndex === -1 && prevIndex !== playingIndex
             ? playingIndex
