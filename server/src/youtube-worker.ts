@@ -27,8 +27,8 @@ async function sendFailureEmail(youtube_id: string, err: any) {
   const mailOptions = {
     from: SMTP_FROM_EMAIL,
     to: SMTP_FROM_EMAIL, // send to self; customize as needed
-    subject: `Jukebox: Song upload failed for YouTube ID ${youtube_id}`,
-    text: `Song upload failed for YouTube ID: ${youtube_id}\n\nError: ${
+    subject: `🚨🚨 Jukebox: Song upload failed for YouTube ID ${youtube_id} 🚨🚨`,
+    text: `🚨 Song upload failed for YouTube ID: ${youtube_id}\n\nError 🚨: ${
       err?.message || err
     }`,
   };
@@ -45,8 +45,8 @@ async function sendSuccessEmail(youtube_id: string) {
   const mailOptions = {
     from: SMTP_FROM_EMAIL,
     to: SMTP_FROM_EMAIL, // send to self; customize as needed
-    subject: `Jukebox: Song upload succeeded for YouTube ID ${youtube_id}`,
-    text: `Song upload succeeded for YouTube ID: ${youtube_id}`,
+    subject: `✅✅ Jukebox: Song upload succeeded for YouTube ID ${youtube_id} ✅✅`,
+    text: `✅ Song upload succeeded for YouTube ID: ${youtube_id} ✅`,
   };
   try {
     await smtpTransport.sendMail(mailOptions);
@@ -105,6 +105,38 @@ process.on("unhandledRejection", (reason) => {
   console.error("Unhandled Rejection:", reason);
   process.exit(1);
 });
+
+// Graceful shutdown handler to reset processing records
+async function gracefulShutdown(signal: string) {
+  console.log(`Received ${signal}. Resetting processing records to pending...`);
+  try {
+    // Reset any records that are currently being processed back to pending
+    const result = await db
+      .updateTable("song_youtube_status")
+      .set({
+        status: "pending",
+        updated_at: new Date().toISOString(),
+        error_message: "Worker process was terminated, resetting to pending",
+      })
+      .where("status", "=", "processing")
+      .execute();
+
+    const resetCount = result.reduce(
+      (sum, r) => sum + Number(r.numUpdatedRows || 0),
+      0
+    );
+    console.log(`Reset ${resetCount} processing records to pending`);
+  } catch (err) {
+    console.error("Error during graceful shutdown:", err);
+  } finally {
+    process.exit(0);
+  }
+}
+
+// Register shutdown handlers for common termination signals
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGHUP", () => gracefulShutdown("SIGHUP"));
 
 // Atomically get and claim a song for processing in a single transaction
 async function getAndClaimNextSong() {

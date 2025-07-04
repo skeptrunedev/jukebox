@@ -135,11 +135,21 @@ export default function HomePage() {
               <div className="rounded-lg shadow overflow-hidden mx-12 w-full aspect-[9/16] bg-black flex items-center justify-center max-w-[275px]">
                 <iframe
                   className="w-full h-full"
-                  src="https://www.youtube.com/embed/YOUR_VIDEO_ID"
-                  title="How to use Jukebox"
+                  src="https://youtube.com/embed/C7B8An4k3qU?showinfo=0&modestbranding=1"
+                  title="demo video"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
+                  style={{ pointerEvents: "auto" }}
                 ></iframe>
+                <style>{`
+                  .ytp-chrome-top.ytp-show-cards-title, .ytp-gradient-top {
+                    display: none !important;
+                  }
+
+                  .ytp-title {
+                    display: none !important;
+                  }
+                `}</style>
               </div>
             </div>
           </Card>
