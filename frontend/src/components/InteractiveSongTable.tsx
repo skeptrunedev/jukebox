@@ -56,8 +56,14 @@ const SortableRow = ({
       key={rowProps.key}
       className={rowProps.className}
     >
-      <TableCell {...listeners} className="cursor-grab">
-        <GripVertical />
+      <TableCell
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing p-2 touch-none select-none"
+        style={{ touchAction: "none" }}
+      >
+        <div className="flex items-center justify-center w-6 h-6">
+          <GripVertical className="w-4 h-4" />
+        </div>
       </TableCell>
       {columns.map((col, colIndex) => (
         <TableCell key={colIndex}>{col.cell(row, 0)}</TableCell>
@@ -81,7 +87,11 @@ export function InteractiveSongTable({
   ) => { key: Key; className?: string };
 }) {
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
