@@ -10,9 +10,9 @@ import {
   TooltipTrigger,
 } from "./tooltip";
 import { siGithub, siX } from "simple-icons";
-import { Edit, User as UserIcon } from "lucide-react";
+import { Edit, User as UserIcon, SaveIcon } from "lucide-react";
 import { useGitHubStars } from "../../hooks/useGitHubStars";
-import { getBox, updateBox, createBox } from "../../sdk";
+import { updateBox, createBox } from "../../sdk";
 import { CreateBoxDialog } from "../CreateBoxDialog";
 import { names } from "../../assets/cool-names";
 import { useJukebox } from "@/hooks/useJukeboxContext";
@@ -23,7 +23,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
-  const { user } = useJukebox();
+  const { user, box } = useJukebox();
   const { formattedStars, loading } = useGitHubStars("skeptrunedev/jukebox");
   const location = useLocation();
   const params = useParams();
@@ -36,6 +36,7 @@ export function Layout({ children }: LayoutProps) {
   const boxSlug = params.boxSlug;
   const isHomePage = location.pathname === "/";
   const isProfilePage = location.pathname === "/profile";
+  const isPlayPage = location.pathname.startsWith("/play/");
   const hasBoxSlug = !!boxSlug;
 
   // Function to get a random cool name
@@ -45,21 +46,13 @@ export function Layout({ children }: LayoutProps) {
 
   // Load jukebox name when on a box page
   useEffect(() => {
-    if (!boxSlug) {
+    if (!box) {
       setJukeboxName("");
       return;
     }
 
-    (async () => {
-      try {
-        const box = await getBox(boxSlug);
-        setJukeboxName(box.name || "");
-      } catch (error) {
-        console.error("Error loading box:", error);
-        setJukeboxName("");
-      }
-    })();
-  }, [boxSlug]);
+    setJukeboxName(box.name || "");
+  }, [box]);
 
   const handleCreateJukebox = async (name: string) => {
     if (!user?.id) return;
@@ -76,7 +69,11 @@ export function Layout({ children }: LayoutProps) {
   };
 
   const handleSaveName = async () => {
-    if (!boxSlug || !jukeboxName.trim()) return;
+    if (!boxSlug || !jukeboxName.trim()) {
+      setJukeboxName(box?.name || "");
+      setIsEditing(false);
+      return;
+    }
 
     setIsUpdating(true);
     try {
@@ -107,17 +104,16 @@ export function Layout({ children }: LayoutProps) {
       );
     }
 
-    if (hasBoxSlug && jukeboxName) {
+    if (hasBoxSlug && isPlayPage) {
       return (
         <TooltipProvider>
           <div className="flex items-center gap-2">
             {isEditing ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 px-2">
                 <Input
                   value={jukeboxName}
                   onChange={(e) => setJukeboxName(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  onBlur={handleSaveName}
                   className="min-w-[200px]"
                   autoFocus
                 />
@@ -126,7 +122,7 @@ export function Layout({ children }: LayoutProps) {
                   onClick={handleSaveName}
                   disabled={isUpdating}
                 >
-                  {isUpdating ? "..." : "Save"}
+                  {isUpdating ? "..." : <SaveIcon className="h-4 w-4" />}
                 </Button>
               </div>
             ) : (
@@ -136,7 +132,7 @@ export function Layout({ children }: LayoutProps) {
                     onClick={() => setIsEditing(true)}
                     className="sm:text-lg font-semibold text-foreground hover:text-main transition-colors cursor-pointer px-2 py-1 rounded-md hover:bg-secondary-background/50 flex items-center gap-2"
                   >
-                    {jukeboxName}
+                    <span>{jukeboxName}</span>
                     <Edit className="h-4 w-4 opacity-60" />
                   </button>
                 </TooltipTrigger>
@@ -147,6 +143,12 @@ export function Layout({ children }: LayoutProps) {
             )}
           </div>
         </TooltipProvider>
+      );
+    } else if (hasBoxSlug) {
+      return (
+        <p className="sm:text-lg font-semibold text-foreground hover:text-main transition-colors cursor-pointer px-2 py-1 rounded-md hover:bg-secondary-background/50 flex items-center gap-2">
+          {jukeboxName}
+        </p>
       );
     }
 
@@ -161,7 +163,7 @@ export function Layout({ children }: LayoutProps) {
             <div className="flex items-center">
               <a
                 className={`size-9 rounded-base flex text-main-foreground border-2 border-black items-center justify-center font-heading ${
-                  jukeboxName ? "bg-main" : "bg-white"
+                  hasBoxSlug ? "bg-main" : "bg-white"
                 }`}
                 href="/"
               >

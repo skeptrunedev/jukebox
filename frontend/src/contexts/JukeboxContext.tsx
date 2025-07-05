@@ -169,10 +169,6 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
         playingIndex = 0;
       }
       if (playingIndex !== undefined && playingIndex !== -1) {
-        console.log(
-          "Setting current song index to playing or queued song:",
-          playingIndex
-        );
         setCurrentSongIndex((prevIndex) =>
           prevIndex === -1 && prevIndex !== playingIndex
             ? playingIndex
