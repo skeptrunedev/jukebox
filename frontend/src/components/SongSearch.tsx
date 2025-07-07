@@ -45,6 +45,7 @@ export default function SongSearch({ onSongSelect }: SongSearchProps) {
   const performSearch = async (searchQuery: string) => {
     if (!searchQuery.trim()) {
       setResults([]);
+      setIsSearching(false);
       return;
     }
 
@@ -88,7 +89,7 @@ export default function SongSearch({ onSongSelect }: SongSearchProps) {
     // Set new timeout for search
     debounceRef.current = setTimeout(() => {
       performSearch(newQuery);
-    }, 2000);
+    }, 1500);
   };
 
   // Clean up timeout on unmount
