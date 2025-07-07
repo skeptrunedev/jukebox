@@ -132,28 +132,18 @@ export default function HomePage() {
               />
             </div>
             <div className="w-full flex justify-center mt-8">
-              <div className="rounded-lg shadow overflow-hidden mx-12 w-full aspect-[9/16] bg-black flex items-center justify-center max-w-[275px]">
+              <div className="rounded-lg shadow overflow-hidden mx-12 w-full aspect-[1/2] bg-black flex items-center justify-center max-w-[275px]">
                 <iframe
-                  className="w-full h-full"
-                  src="https://youtube.com/embed/C7B8An4k3qU?showinfo=0&modestbranding=1"
-                  title="demo video"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  style={{ pointerEvents: "auto" }}
-                ></iframe>
-                <style>{`
-                  .ytp-gradient-top {
-                    display: none !important;
-                  }
-
-                  .ytp-chrome-top {
-                    display: none !important;
-                  }
-
-                  .ytp-title {
-                    display: none !important;
-                  }
-                `}</style>
+                  src="https://player.vimeo.com/video/1099164181?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
+                  allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    top: 0,
+                    left: 0,
+                  }}
+                  title="Jukebox - Free alternative to Spotify Collaborative Playlists"
+                />
               </div>
             </div>
           </Card>

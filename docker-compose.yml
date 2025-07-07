@@ -1,6 +1,6 @@
 services:
   server:
-    image: skeptrune/jukebox-server:v0.0.11
+    image: skeptrune/jukebox-server:v0.0.12
     ports:
       - "${SERVER_PORT}:${SERVER_INTERNAL_PORT}"
     env_file:
@@ -34,7 +34,7 @@ services:
         window: 60s
 
   worker1:
-    image: skeptrune/jukebox-worker:v0.0.11
+    image: skeptrune/jukebox-worker:v0.0.12
     ports:
       - "${WORKER1_PORT}:${WORKER1_INTERNAL_PORT}"
     env_file:
@@ -62,7 +62,7 @@ services:
       retries: 3
 
   worker2:
-    image: skeptrune/jukebox-worker:v0.0.11
+    image: skeptrune/jukebox-worker:v0.0.12
     ports:
       - "${WORKER2_PORT}:${WORKER2_INTERNAL_PORT}"
     env_file:
@@ -96,7 +96,7 @@ services:
       retries: 3
 
   worker3:
-    image: skeptrune/jukebox-worker:v0.0.11
+    image: skeptrune/jukebox-worker:v0.0.12
     ports:
       - "${WORKER3_PORT}:${WORKER3_INTERNAL_PORT}"
     env_file:
@@ -130,7 +130,7 @@ services:
       retries: 3
 
   frontend:
-    image: skeptrune/jukebox-spa:v0.0.11
+    image: skeptrune/jukebox-spa:v0.0.12
     env_file:
       - .env
     ports:
