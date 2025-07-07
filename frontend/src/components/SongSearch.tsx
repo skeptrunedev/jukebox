@@ -78,6 +78,7 @@ export default function SongSearch({ onSongSelect }: SongSearchProps) {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newQuery = e.target.value;
     setQuery(newQuery);
+    setIsSearching(true);
 
     // Clear existing timeout
     if (debounceRef.current) {
@@ -87,7 +88,7 @@ export default function SongSearch({ onSongSelect }: SongSearchProps) {
     // Set new timeout for search
     debounceRef.current = setTimeout(() => {
       performSearch(newQuery);
-    }, 1500);
+    }, 2000);
   };
 
   // Clean up timeout on unmount
