@@ -87,7 +87,7 @@ export default function SongSearch({ onSongSelect }: SongSearchProps) {
     // Set new timeout for search
     debounceRef.current = setTimeout(() => {
       performSearch(newQuery);
-    }, 500); // 500ms debounce
+    }, 1500);
   };
 
   // Clean up timeout on unmount
