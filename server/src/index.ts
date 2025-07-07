@@ -13,6 +13,7 @@ import fetch from "node-fetch";
 import { S3 } from "@aws-sdk/client-s3";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import nodemailer from "nodemailer";
 
 // S3 configuration from .env
 const accessKeyId = process.env.S3_ACCESS_KEY_ID;
@@ -32,6 +33,16 @@ const s3 = new S3({
   forcePathStyle: true,
 });
 const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME || "";
+
+const smtpTransport = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587,
+  secure: process.env.SMTP_SECURE === "true", // true for SSL/TLS, false for STARTTLS or plain
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASSWORD,
+  },
+});
 
 if (!fs.existsSync("logsinks")) {
   fs.mkdirSync("logsinks");
@@ -1681,6 +1692,23 @@ app.get("/api/youtube/search", async (req, res, _next: NextFunction) => {
     res.json({ items: results });
   } catch (error) {
     console.error("YouTube search error:", error);
+    // send an email on failure
+    const SMTP_FROM_EMAIL =
+      process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER;
+    const mailOptions = {
+      from: SMTP_FROM_EMAIL,
+      to: SMTP_FROM_EMAIL,
+      subject: `🚨🚨 Search Jukebox: YouTube search failed 🚨🚨`,
+      text: `🚨 YouTube search failed for query: ${req.query.q}\n\nError 🚨: ${
+        (error as Error).message
+      }`,
+    };
+    try {
+      smtpTransport.sendMail(mailOptions);
+      console.log(`Failure email sent for YouTube search: ${req.query.q}`);
+    } catch (emailErr) {
+      console.error("Failed to send failure email:", emailErr);
+    }
     res.status(500).json({ error: (error as Error).message });
   }
 });

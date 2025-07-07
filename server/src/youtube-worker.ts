@@ -22,7 +22,7 @@ const smtpTransport = nodemailer.createTransport({
 
 const SMTP_FROM_EMAIL = process.env.SMTP_FROM_EMAIL;
 
-async function sendFailureEmail(youtube_id: string, err: any) {
+export async function sendFailureEmail(youtube_id: string, err: any) {
   if (!SMTP_FROM_EMAIL) return;
   const mailOptions = {
     from: SMTP_FROM_EMAIL,
@@ -40,7 +40,7 @@ async function sendFailureEmail(youtube_id: string, err: any) {
   }
 }
 
-async function sendSuccessEmail(youtube_id: string) {
+export async function sendSuccessEmail(youtube_id: string) {
   if (!SMTP_FROM_EMAIL) return;
   const mailOptions = {
     from: SMTP_FROM_EMAIL,
