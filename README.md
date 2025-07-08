@@ -127,7 +127,7 @@ MIT
 ## Contributing & Feedback
 
 - Open an issue or pull request on [GitHub](https://github.com/skeptrunedev/jukebox)
-- Feature requests? DM [@skeptrune on X (Twitter)](https://twitter.com/skeptrun)
+- Feature requests? DM [@skeptrune on X (Twitter)](https://twitter.com/skeptrune)
 
 ---
 
