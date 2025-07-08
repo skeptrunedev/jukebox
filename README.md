@@ -1,5 +1,7 @@
 <p align="center">
-  <img height="500" src="frontend/public/opengraph-image.jpg" alt="Trieve Logo">
+  <a href="https://www.jukeboxhq.com">
+    <img height="500" src="frontend/public/opengraph-image.jpg" alt="Trieve Logo">
+  </a>
 </p>
 
 <p align="center">
