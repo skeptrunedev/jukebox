@@ -33,7 +33,7 @@ interface SongSearchProps {
 }
 
 export default function SongSearch({ onSongSelect }: SongSearchProps) {
-  const { songs } = useJukebox();
+  const { songs, rows } = useJukebox();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<YouTubeSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -180,7 +180,11 @@ export default function SongSearch({ onSongSelect }: SongSearchProps) {
                 {results
                   .filter(
                     (result) =>
-                      !songs.some((song) => song.youtube_id === result.id)
+                      !(
+                        songs.some((song) => song.youtube_id === result.id) ||
+                        rows.some((row) => row.youtube_id === result.id) ||
+                        addingIds.has(result.id)
+                      )
                   )
                   .map((result) => (
                     <motion.div

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Play, Pause, SkipForward, SkipBack } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, Download } from "lucide-react";
 import { useJukebox } from "@/hooks/useJukeboxContext";
 import { updateBoxSong, getYouTubeAudioSignedUrl } from "@/sdk";
 import type { SongRow } from "@/lib/player";
@@ -335,8 +335,8 @@ export const YouTubePlayer = () => {
                     preload="auto"
                     crossOrigin="anonymous"
                   />
-                  {/* Song Info */}
-                  <div className="flex items-center gap-4">
+                  {/* Song Info + Download Button (top right) */}
+                  <div className="flex items-start gap-4 relative">
                     {currentSong.thumbnail_url && (
                       <img
                         src={currentSong.thumbnail_url}
@@ -358,6 +358,25 @@ export const YouTubePlayer = () => {
                         }}
                       />
                     </div>
+                    {/* Download button, only show if mediaUrl is available */}
+                    {mediaUrl && (
+                      <a
+                        href={mediaUrl}
+                        download={
+                          currentSong?.title
+                            ? `${currentSong.title}.mp3`
+                            : undefined
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute right-0 top-0 ml-2"
+                        title="Download audio"
+                      >
+                        <Button variant="neutral" size="sm" type="button">
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </a>
+                    )}
                   </div>
                   {/* Progress Bar */}
                   <div className="space-y-2 mt-4">

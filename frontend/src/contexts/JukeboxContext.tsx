@@ -259,6 +259,26 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
       duration: number;
     }) => {
       if (!boxSlug || !user?.id) return;
+      // Optimistically add a temporary SongRow immediately
+      const tempId = `temp-${Date.now()}-${Math.random()}`;
+      const optimisticRow: SongRow = {
+        id: tempId,
+        position: 9999,
+        title: songData.title,
+        artist: songData.artist,
+        youtube_id: songData.youtube_id,
+        youtube_url: songData.youtube_url,
+        thumbnail_url: songData.thumbnail_url,
+        duration: songData.duration,
+        status: "queued",
+        user,
+      };
+      setRows((prev) => {
+        if (prev.some((row) => row.youtube_id === songData.youtube_id)) {
+          return prev;
+        }
+        return [...prev, optimisticRow];
+      });
       try {
         let song;
         try {
@@ -292,14 +312,19 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
         };
 
         setRows((prev) => {
-          // Check if this song already exists to avoid duplicates
-          const existingSong = prev.find((row) => row.id === newRow.id);
-          if (existingSong) {
-            return prev; // Don't add duplicate
+          // Remove the optimistic row and add the real one (unless already present)
+          const filtered = prev.filter(
+            (row) => row.id !== tempId && row.youtube_id !== newRow.youtube_id
+          );
+          // Avoid duplicate if already present (e.g. from polling)
+          if (filtered.some((row) => row.id === newRow.id)) {
+            return filtered;
           }
-          return [...prev, newRow];
+          return [...filtered, newRow];
         });
       } catch (error) {
+        // Remove the optimistic row on error
+        setRows((prev) => prev.filter((row) => row.id !== tempId));
         console.error("Error adding YouTube song:", error);
         throw error;
       }
