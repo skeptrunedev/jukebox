@@ -328,6 +328,58 @@ export default function HomePage() {
           </h2>
           <div className="space-y-8">
             <div>
+              <h3
+                id="changelog-v0-0-17"
+                className="text-2xl font-semibold mb-2"
+              >
+                v0.0.17 (2025-07-08)
+              </h3>
+              <ul className="list-disc list-inside text-lg ml-4">
+                <li>
+                  ✨ Enhanced <b>SongSearch</b> and <b>YouTubePlayer</b>{" "}
+                  components with additional state management and UI updates
+                </li>
+                <li>
+                  🐳 Updated Docker images to <b>v0.0.16</b>, <b>v0.0.15</b>,{" "}
+                  <b>v0.0.14</b>, <b>v0.0.13</b>, <b>v0.0.12</b>, <b>v0.0.8</b>
+                </li>
+                <li>
+                  ⏱️ Adjusted debounce time in <b>SongSearch</b> for improved
+                  responsiveness
+                </li>
+                <li>
+                  📧 Added <b>SMTP email notifications</b> for YouTube search
+                  failures
+                </li>
+                <li>
+                  🎬 Replaced YouTube video with <b>Vimeo</b> in HomePage
+                </li>
+                <li>
+                  🖼️ Added logo image to <b>README</b> for enhanced visual
+                  appeal
+                </li>
+                <li>
+                  🛠️ Enhanced <b>layout</b> component with box context and save
+                  icon
+                </li>
+                <li>
+                  🚫 Prevented editing box name on <b>SharePage</b>
+                </li>
+                <li>
+                  📱 Improved drag-and-drop song list behavior for mobile touch
+                </li>
+                <li>🐞 Fixed bug when all songs are marked as played</li>
+                <li>
+                  🔄 Reset playback state in <b>YouTubePlayer</b> and refined
+                  initial song index logic
+                </li>
+                <li>🧹 Refined HomePage text and styles</li>
+                <li>
+                  🤖 Added <b>robots.txt</b>
+                </li>
+              </ul>
+            </div>
+            <div>
               <h3 id="changelog-v0-0-4" className="text-2xl font-semibold mb-2">
                 v0.0.4 (2025-07-01)
               </h3>
