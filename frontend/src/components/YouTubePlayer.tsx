@@ -36,7 +36,6 @@ export const YouTubePlayer = () => {
     }
   }, [currentSongIndex, songs]);
 
-  // Poll for YouTube audio signed URL
   useEffect(() => {
     if (!currentSong || !currentSong.youtube_id) {
       setMediaUrl(null);
@@ -51,7 +50,6 @@ export const YouTubePlayer = () => {
     const poll = async () => {
       try {
         const result = await getYouTubeAudioSignedUrl(currentSong.youtube_id!);
-        // If cancelled or song changed, abort
         if (cancelled || lastPolledIdRef.current !== currentSong.youtube_id)
           return;
         if (result && result.url) {
@@ -60,14 +58,12 @@ export const YouTubePlayer = () => {
         } else {
           setIsLoading(true);
           setMediaUrl(null);
-          // Re-poll after yet
           pollTimeoutRef.current = setTimeout(poll, 2000);
         }
       } catch (e: unknown) {
         console.error("Failed to get YouTube audio signed URL:", e);
         setIsLoading(true);
         setMediaUrl(null);
-        // Re-poll after current = setTimeout(poll, 2000);
       }
     };
     poll();
@@ -94,12 +90,10 @@ export const YouTubePlayer = () => {
       setIsPlaying(false);
       setIsLoading(true);
     } else if (!mediaUrl) {
-      // No media URL yet, waiting for polling
       setIsLoading(true);
     }
   }, [mediaUrl, currentSong]);
 
-  // Audio event listeners effect
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -119,7 +113,6 @@ export const YouTubePlayer = () => {
       setIsPlaying(true);
       setIsLoading(false);
 
-      // Update status to "playing" when song starts
       if (currentSong?.id) {
         try {
           await updateBoxSong(currentSong.id, {
@@ -139,7 +132,6 @@ export const YouTubePlayer = () => {
     const handleEnded = async () => {
       setIsPlaying(false);
 
-      // Mark current song as "played" when it ends
       if (currentSong?.id) {
         try {
           await updateBoxSong(currentSong.id, {
@@ -151,7 +143,6 @@ export const YouTubePlayer = () => {
         }
       }
 
-      // Auto-advance to next song if available
       if (currentSongIndex < songs.length - 1) {
         goToNext();
         setCurrentTime(0);
@@ -178,7 +169,6 @@ export const YouTubePlayer = () => {
       console.error("Audio playback error");
     };
 
-    // Add event listeners
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
     audio.addEventListener("play", handlePlay);
@@ -188,7 +178,6 @@ export const YouTubePlayer = () => {
     audio.addEventListener("canplay", handleCanPlay);
     audio.addEventListener("error", handleError);
 
-    // Cleanup function
     return () => {
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
@@ -215,40 +204,28 @@ export const YouTubePlayer = () => {
         setIsPlaying(true);
       } catch (error) {
         console.error("Playback failed:", error);
-        // The error will be handled by the audio error event listener
       }
     }
   }, [isPlaying]);
-
-  const handlePrevious = async () => {
-    goToPrevious();
-  };
-
-  const handleNext = async () => {
-    goToNext();
-  };
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     const audio = audioRef.current;
     if (!audio || duration === 0 || isLoading) return;
 
-    // Prevent seeking if audio is not ready
-    if (audio.readyState < 2) return; // HAVE_CURRENT_DATA or higher
+    if (audio.readyState < 2) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
-    const percentage = Math.max(0, Math.min(1, clickX / rect.width)); // Clamp between 0 and 1
+    const percentage = Math.max(0, Math.min(1, clickX / rect.width));
     const newTime = percentage * duration;
 
-    // Ensure the new time is within valid bounds
     const clampedTime = Math.max(0, Math.min(duration, newTime));
 
-    // Clear any existing seek timeout
     if (seekTimeoutRef.current) {
       clearTimeout(seekTimeoutRef.current);
     }
 
-    setCurrentTime(clampedTime); // Update UI immediately
+    setCurrentTime(clampedTime);
 
     try {
       audio.currentTime = clampedTime;
@@ -283,27 +260,55 @@ export const YouTubePlayer = () => {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Space bar play/pause control
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only trigger if space bar is pressed and not inside an input/textarea
       if (
-        e.code === "Space" &&
-        !(e.target instanceof HTMLInputElement) &&
-        !(e.target instanceof HTMLTextAreaElement) &&
-        !e.repeat &&
-        currentSong &&
-        !isLoading
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
       ) {
+        return;
+      }
+
+      if (e.code === "Space" && !e.repeat && currentSong && !isLoading) {
         e.preventDefault();
         handlePlayPause();
+        return;
+      }
+
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.code === "ArrowLeft" &&
+        !e.repeat &&
+        currentSong
+      ) {
+        e.preventDefault();
+        goToPrevious();
+        return;
+      }
+
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.code === "ArrowRight" &&
+        !e.repeat &&
+        currentSong
+      ) {
+        e.preventDefault();
+        goToNext();
+        return;
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [currentSong, isLoading, isPlaying, handlePlayPause]);
+  }, [
+    currentSong,
+    isLoading,
+    isPlaying,
+    handlePlayPause,
+    goToPrevious,
+    goToNext,
+  ]);
 
   return (
     <motion.div
@@ -404,7 +409,7 @@ export const YouTubePlayer = () => {
                     <Button
                       variant="neutral"
                       size="sm"
-                      onClick={handlePrevious}
+                      onClick={goToPrevious}
                       disabled={currentSongIndex === 0}
                     >
                       <SkipBack className="h-4 w-4" />
@@ -425,7 +430,7 @@ export const YouTubePlayer = () => {
                     <Button
                       variant="neutral"
                       size="sm"
-                      onClick={handleNext}
+                      onClick={goToNext}
                       disabled={currentSongIndex === songs.length - 1}
                     >
                       <SkipForward className="h-4 w-4" />
