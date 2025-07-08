@@ -232,7 +232,7 @@ export default function HomePage() {
                 . I love hearing your ideas and feedback!
               </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="item-3">
+            <AccordionItem value="item-4">
               <AccordionTrigger className="bg-main text-black font-semibold">
                 How to contribute?
               </AccordionTrigger>
