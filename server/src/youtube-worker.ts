@@ -289,16 +289,6 @@ async function workerLoop() {
                   `Stream received data for ${youtube_id}: ${chunk.length} bytes (chunk #${chunkCountReceived})`
                 );
               });
-              // Cleanup inactivity and start timeouts on end/close
-              const cleanupTimeouts = () => {
-                console.log(
-                  `Stream ended for ${youtube_id}, cleaning up timeouts`
-                );
-                if (inactivityTimeout) clearTimeout(inactivityTimeout);
-                if (startTimeout) clearTimeout(startTimeout);
-              };
-              stream.on("end", cleanupTimeouts);
-              stream.on("close", cleanupTimeouts);
               abortController.signal.addEventListener("abort", () => {
                 if (inactivityTimeout) clearTimeout(inactivityTimeout);
                 if (startTimeout) clearTimeout(startTimeout);
