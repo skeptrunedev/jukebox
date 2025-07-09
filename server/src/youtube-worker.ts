@@ -291,6 +291,9 @@ async function workerLoop() {
               });
               // Cleanup inactivity and start timeouts on end/close
               const cleanupTimeouts = () => {
+                console.log(
+                  `Stream ended for ${youtube_id}, cleaning up timeouts`
+                );
                 if (inactivityTimeout) clearTimeout(inactivityTimeout);
                 if (startTimeout) clearTimeout(startTimeout);
               };
