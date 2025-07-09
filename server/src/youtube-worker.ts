@@ -344,19 +344,46 @@ async function workerLoop() {
                 });
             });
             await uploadPromise;
-            // Mark as completed
-            await db
-              .updateTable("song_youtube_status")
-              .set({
-                status: "completed",
-                updated_at: new Date().toISOString(),
-                error_message: null,
-              })
-              .where("youtube_id", "=", youtube_id)
-              .where("status", "=", "processing")
-              .execute();
             console.log(
-              `\x1b[32mUploaded ${youtube_id} to S3 as ${s3Key}\x1b[0m`
+              `\x1b[32mSuccessfully uploaded ${youtube_id} to S3 as ${s3Key}\x1b[0m`
+            );
+            // Add a timeout of 5s with up to 5 retries for DB update
+            const updateWithTimeout = async (retries = 5): Promise<void> => {
+              for (let attempt = 1; attempt <= retries; attempt++) {
+                try {
+                  await Promise.race([
+                    db
+                      .updateTable("song_youtube_status")
+                      .set({
+                        status: "completed",
+                        updated_at: new Date().toISOString(),
+                        error_message: null,
+                      })
+                      .where("youtube_id", "=", youtube_id)
+                      .where("status", "=", "processing")
+                      .execute(),
+                    new Promise((_, reject) =>
+                      setTimeout(
+                        () => reject(new Error("DB update timeout after 2s")),
+                        2000
+                      )
+                    ),
+                  ]);
+                  return; // Success
+                } catch (err) {
+                  if (attempt === retries) {
+                    throw err;
+                  }
+                  console.error(
+                    `DB update attempt ${attempt} failed for ${youtube_id}, retrying...`,
+                    err
+                  );
+                }
+              }
+            };
+            await updateWithTimeout();
+            console.log(
+              `\x1b[32mMarked ${youtube_id} as completed in database\x1b[0m`
             );
             await sendSuccessEmail(youtube_id);
             return;
