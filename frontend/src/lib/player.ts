@@ -53,3 +53,18 @@ export function toPlayerSongs(rows: SongRow[]): PlayerSong[] {
 export function usePlayerSongs(rows: SongRow[]): PlayerSong[] {
   return useMemo(() => toPlayerSongs(rows), [rows]);
 }
+
+export interface PlaybackState {
+  box_id: string;
+  current_song_id: string | null;
+  leader_user_id: string | null;
+  is_playing: boolean;
+  playback_position: number;
+  position_updated_at?: string;
+}
+
+export interface SyncState {
+  isListeningAlong: boolean;
+  isLeader: boolean;
+  playbackState: PlaybackState | null;
+}

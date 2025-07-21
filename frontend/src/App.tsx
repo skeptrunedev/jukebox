@@ -5,6 +5,7 @@ import SharePage from "@/pages/SharePage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { Layout } from "@/components/ui/layout";
 import { JukeboxProvider } from "@/contexts/JukeboxContext";
+import { SyncProvider } from "@/contexts/SyncContext";
 
 function App() {
   return (
@@ -14,9 +15,11 @@ function App() {
           path="/"
           element={
             <JukeboxProvider>
-              <Layout>
-                <HomePage />
-              </Layout>
+              <SyncProvider>
+                <Layout>
+                  <HomePage />
+                </Layout>
+              </SyncProvider>
             </JukeboxProvider>
           }
         />
@@ -24,9 +27,11 @@ function App() {
           path="/play/:boxSlug"
           element={
             <JukeboxProvider>
-              <Layout>
-                <PlayPage />
-              </Layout>
+              <SyncProvider>
+                <Layout>
+                  <PlayPage />
+                </Layout>
+              </SyncProvider>
             </JukeboxProvider>
           }
         />
@@ -34,9 +39,11 @@ function App() {
           path="/share/:boxSlug"
           element={
             <JukeboxProvider>
-              <Layout>
-                <SharePage />
-              </Layout>
+              <SyncProvider>
+                <Layout>
+                  <SharePage />
+                </Layout>
+              </SyncProvider>
             </JukeboxProvider>
           }
         />
@@ -44,9 +51,11 @@ function App() {
           path="/profile"
           element={
             <JukeboxProvider>
-              <Layout>
-                <ProfilePage />
-              </Layout>
+              <SyncProvider>
+                <Layout>
+                  <ProfilePage />
+                </Layout>
+              </SyncProvider>
             </JukeboxProvider>
           }
         />

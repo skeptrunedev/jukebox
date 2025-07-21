@@ -36,4 +36,15 @@ export interface Database {
     created_at: string;
     updated_at: string;
   };
+  box_playback_state: {
+    id: string;
+    box_id: string;
+    current_song_id: string | null;
+    leader_user_id: string | null;
+    is_playing: boolean;
+    playback_position: number;
+    position_updated_at: Date;
+    created_at: Date;
+    updated_at: Date;
+  };
 }
