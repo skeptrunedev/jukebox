@@ -47,4 +47,11 @@ export interface Database {
     created_at: Date;
     updated_at: Date;
   };
+  skip_votes: {
+    id: string;
+    box_id: string;
+    song_id: string;
+    user_id: string;
+    created_at: Date;
+  };
 }

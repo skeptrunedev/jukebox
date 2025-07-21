@@ -3,6 +3,7 @@ import { useJukebox } from "@/hooks/useJukeboxContext";
 import { useEventSource } from "@/hooks/useEventSource";
 import type { PlaybackState } from "@/lib/player";
 import { SyncContext, type SyncContextValue } from "./syncContext";
+import { toast } from "sonner";
 
 export function SyncProvider({ children }: { children: React.ReactNode }) {
   const { box, user } = useJukebox();
@@ -46,15 +47,26 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       } else if (data.type === "leader_released") {
         setIsLeader(false);
         setPlaybackState((prev) => prev ? { ...prev, leader_user_id: null } : null);
+      } else if (data.type === "song_skipped" && data.reason === "vote") {
+        toast.info("Song skipped by vote");
       }
     }
   });
 
   const startListeningAlong = useCallback(async () => {
-    if (!box?.id || !user?.id) return;
+    if (!box?.id || !user?.id) {
+      toast.error("Unable to start listening along");
+      return;
+    }
     
-    setIsListeningAlong(true);
-    await fetchPlaybackState();
+    try {
+      setIsListeningAlong(true);
+      await fetchPlaybackState();
+      toast.success("Started listening along");
+    } catch {
+      toast.error("Failed to connect to sync session");
+      setIsListeningAlong(false);
+    }
   }, [box?.id, user?.id, fetchPlaybackState]);
 
   const stopListeningAlong = useCallback(async () => {
@@ -79,6 +91,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     
     setIsListeningAlong(false);
     setIsLeader(false);
+    toast.info("Stopped listening along");
   }, [box?.id, user?.id, isLeader]);
 
   const updatePlaybackState = useCallback(async (updates: Partial<PlaybackState>) => {

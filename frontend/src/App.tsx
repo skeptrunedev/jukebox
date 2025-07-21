@@ -6,61 +6,36 @@ import { ProfilePage } from "@/pages/ProfilePage";
 import { Layout } from "@/components/ui/layout";
 import { JukeboxProvider } from "@/contexts/JukeboxContext";
 import { SyncProvider } from "@/contexts/SyncContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ConnectionStatus } from "@/components/ConnectionStatus";
+import { Toaster } from "sonner";
+
+function AppProviders({ children }: { children: React.ReactNode }) {
+  return (
+    <JukeboxProvider>
+      <SyncProvider>
+        <Layout>
+          {children}
+          <ConnectionStatus />
+        </Layout>
+      </SyncProvider>
+    </JukeboxProvider>
+  );
+}
 
 function App() {
   return (
-    <BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Toaster richColors />
       <Routes>
-        <Route
-          path="/"
-          element={
-            <JukeboxProvider>
-              <SyncProvider>
-                <Layout>
-                  <HomePage />
-                </Layout>
-              </SyncProvider>
-            </JukeboxProvider>
-          }
-        />
-        <Route
-          path="/play/:boxSlug"
-          element={
-            <JukeboxProvider>
-              <SyncProvider>
-                <Layout>
-                  <PlayPage />
-                </Layout>
-              </SyncProvider>
-            </JukeboxProvider>
-          }
-        />
-        <Route
-          path="/share/:boxSlug"
-          element={
-            <JukeboxProvider>
-              <SyncProvider>
-                <Layout>
-                  <SharePage />
-                </Layout>
-              </SyncProvider>
-            </JukeboxProvider>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <JukeboxProvider>
-              <SyncProvider>
-                <Layout>
-                  <ProfilePage />
-                </Layout>
-              </SyncProvider>
-            </JukeboxProvider>
-          }
-        />
+        <Route path="/" element={<AppProviders><HomePage /></AppProviders>} />
+        <Route path="/play/:boxSlug" element={<AppProviders><PlayPage /></AppProviders>} />
+        <Route path="/share/:boxSlug" element={<AppProviders><SharePage /></AppProviders>} />
+        <Route path="/profile" element={<AppProviders><ProfilePage /></AppProviders>} />
       </Routes>
     </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 

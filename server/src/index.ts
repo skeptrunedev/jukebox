@@ -1917,6 +1917,112 @@ app.delete("/api/boxes/:boxId/playback-state/leader",
     });
 });
 
+// Vote to skip current song
+app.post("/api/boxes/:boxId/vote-skip", (req, res, _next: NextFunction) => {
+  const { boxId } = req.params;
+  const { user_id, song_id } = req.body;
+  
+  // Insert vote (will fail if duplicate due to unique constraint)
+  db.insertInto("skip_votes")
+    .values({
+      id: randomUUID(),
+      box_id: boxId,
+      song_id,
+      user_id,
+      created_at: new Date()
+    })
+    .execute()
+    .then(() => {
+      // Count total votes for this song
+      return db
+        .selectFrom("skip_votes")
+        .select(db.fn.count("id").as("count"))
+        .where("box_id", "=", boxId)
+        .where("song_id", "=", song_id)
+        .executeTakeFirstOrThrow();
+    })
+    .then(voteCount => {
+      // Count active listeners (users who received SSE messages in last 5 minutes)
+      const activeUsers = global.sseClients?.get(boxId)?.size || 1;
+      const threshold = Math.floor(activeUsers / 2) + 1; // Majority
+      
+      // Broadcast vote update
+      broadcastToBox(boxId, {
+        type: "skip_vote_update",
+        song_id,
+        vote_count: Number(voteCount.count),
+        threshold,
+        voter_id: user_id
+      });
+      
+      // If threshold reached, skip the song
+      if (Number(voteCount.count) >= threshold) {
+        // Update song status to played
+        db.updateTable("box_songs")
+          .set({ status: "played" })
+          .where("id", "=", song_id)
+          .execute()
+          .then(() => {
+            // Clear votes for this song
+            return db
+              .deleteFrom("skip_votes")
+              .where("box_id", "=", boxId)
+              .where("song_id", "=", song_id)
+              .execute();
+          })
+          .then(() => {
+            // Broadcast skip event
+            broadcastToBox(boxId, {
+              type: "song_skipped",
+              song_id,
+              reason: "vote"
+            });
+          })
+          .catch(error => {
+            console.error("Failed to skip song:", error);
+          });
+      }
+      
+      res.json({ 
+        success: true, 
+        vote_count: Number(voteCount.count),
+        threshold 
+      });
+    })
+    .catch((error: any) => {
+      if (error.code === "SQLITE_CONSTRAINT") {
+        return res.status(400).json({ error: "Already voted" });
+      }
+      console.error("Failed to vote:", error);
+      res.status(500).json({ error: "Failed to vote" });
+    });
+});
+
+// Get current votes for a song
+app.get("/api/boxes/:boxId/songs/:songId/votes", (req, res, _next: NextFunction) => {
+  const { boxId, songId } = req.params;
+  
+  db.selectFrom("skip_votes")
+    .select(["user_id", "created_at"])
+    .where("box_id", "=", boxId)
+    .where("song_id", "=", songId)
+    .execute()
+    .then(votes => {
+      const activeUsers = global.sseClients?.get(boxId)?.size || 1;
+      const threshold = Math.floor(activeUsers / 2) + 1;
+      
+      res.json({
+        votes,
+        vote_count: votes.length,
+        threshold
+      });
+    })
+    .catch(error => {
+      console.error("Failed to get votes:", error);
+      res.status(500).json({ error: "Failed to get votes" });
+    });
+});
+
 // Helper function to broadcast events
 function broadcastToBox(boxId: string, event: any) {
   const boxClients = global.sseClients?.get(boxId);

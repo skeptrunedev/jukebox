@@ -7,6 +7,8 @@ import { useSync } from "@/hooks/useSync";
 import { updateBoxSong, getYouTubeAudioSignedUrl } from "@/sdk";
 import type { SongRow } from "@/lib/player";
 import { motion } from "framer-motion";
+import { VoteSkip } from "@/components/VoteSkip";
+import { VolumeSlider } from "@/components/VolumeSlider";
 
 export const YouTubePlayer = () => {
   const { songs, currentSongIndex, goToPrevious, goToNext } = useJukebox();
@@ -390,6 +392,7 @@ export const YouTubePlayer = () => {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.4 }}
+                  className="relative"
                 >
                   {/* Hidden audio element */}
                   <audio
@@ -440,6 +443,17 @@ export const YouTubePlayer = () => {
                       </a>
                     )}
                   </div>
+                  {/* Loading Overlay */}
+                  {isLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur rounded-lg">
+                      <div className="space-y-2 text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-main mx-auto" />
+                        <p className="text-sm text-muted-foreground">
+                          {mediaUrl ? "Buffering..." : "Loading audio..."}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   {/* Progress Bar */}
                   <div className="space-y-2 mt-4">
                     <div
@@ -460,6 +474,10 @@ export const YouTubePlayer = () => {
                       <span>{formatTime(currentTime)}</span>
                       <span>{formatTime(duration)}</span>
                     </div>
+                  </div>
+                  {/* Volume Control */}
+                  <div className="mt-2 flex justify-center">
+                    <VolumeSlider audioRef={audioRef} />
                   </div>
                   {/* Player Controls */}
                   <div className="flex items-center justify-center gap-4 mt-4">
@@ -505,6 +523,10 @@ export const YouTubePlayer = () => {
                         : "Listen Along"
                       }
                     </Button>
+                    {/* Vote Skip */}
+                    {currentSong && isListeningAlong && (
+                      <VoteSkip songId={currentSong.id} />
+                    )}
                   </div>
                   {/* Playlist Info */}
                   <div className="text-center text-sm text-gray-600 mt-4">
