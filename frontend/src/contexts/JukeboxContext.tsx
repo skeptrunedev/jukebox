@@ -8,6 +8,7 @@ import {
 } from "react";
 import { useParams } from "react-router-dom";
 import type { components } from "@/sdk/api";
+import { useEventSource } from "@/hooks/useEventSource";
 import {
   getBox,
   getBoxSongs,
@@ -239,14 +240,30 @@ export function JukeboxProvider({ children }: { children: ReactNode }) {
     fetchBox();
   }, [fetchBox]);
 
+  // SSE connection for real-time updates
+  const sseUrl = box?.id ? `${import.meta.env.VITE_API_HOST || ""}/api/boxes/${box.id}/events` : null;
+  
+  useEventSource(sseUrl, {
+    onMessage: (event) => {
+      const data = event.data;
+      if (data.type === "songs_updated") {
+        fetchBoxSongs();
+      }
+    },
+    onError: () => {
+      // Fallback to polling on SSE failure
+      console.warn("SSE failed, falling back to polling");
+      const pollInterval = setInterval(() => {
+        fetchBoxSongs();
+      }, 2000);
+      
+      return () => clearInterval(pollInterval);
+    }
+  });
+
+  // Initial fetch
   useEffect(() => {
     fetchBoxSongs();
-
-    const refetchInterval = setInterval(() => {
-      fetchBoxSongs();
-    }, 2000);
-
-    return () => clearInterval(refetchInterval);
   }, [fetchBoxSongs]);
 
   const addSong = useCallback(
