@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import SongSearch from "@/components/SongSearch";
 import { SongTable } from "@/components/SongTable";
+import { YouTubePlayer } from "@/components/YouTubePlayer";
 import { Check, Clock, Play } from "lucide-react";
 import { useJukebox } from "@/hooks/useJukeboxContext";
 import { motion } from "framer-motion";
@@ -31,6 +32,14 @@ export default function SharePage() {
               </div>
             </CardContent>
           </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
+        >
+          <YouTubePlayer />
         </motion.div>
 
         <motion.div
