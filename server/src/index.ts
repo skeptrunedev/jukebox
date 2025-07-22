@@ -15,6 +15,10 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import nodemailer from "nodemailer";
 
+declare global {
+  var sseClients: Map<string, Map<string, any>> | undefined;
+}
+
 // S3 configuration from .env
 const accessKeyId = process.env.S3_ACCESS_KEY_ID;
 const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
@@ -1306,6 +1310,10 @@ app.post("/api/box_songs", async (req, res, _next: NextFunction) => {
       .selectAll()
       .where("id", "=", id)
       .executeTakeFirst();
+    
+    // Broadcast update to all connected clients
+    broadcastToBox(box_id, { type: "songs_updated" });
+    
     res.status(201).json(rel);
   } catch (error) {
     console.error("Error creating box_song relation:", error);
@@ -1530,6 +1538,12 @@ app.put("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
       .selectAll()
       .where("id", "=", req.params.id)
       .executeTakeFirst();
+    
+    // Broadcast update to all connected clients
+    if (rel) {
+      broadcastToBox(rel.box_id, { type: "songs_updated" });
+    }
+    
     res.json(rel);
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
@@ -1557,13 +1571,29 @@ app.put("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
  */
 app.delete("/api/box_songs/:id", async (req, res, _next: NextFunction) => {
   try {
+    // Get the box_song data before deleting for broadcast
+    const boxSong = await db
+      .selectFrom("box_songs")
+      .selectAll()
+      .where("id", "=", req.params.id)
+      .executeTakeFirst();
+      
+    if (!boxSong) {
+      return void res.status(404).json({ error: "Relation not found" });
+    }
+    
     const deletedRows = await db
       .deleteFrom("box_songs")
       .where("id", "=", req.params.id)
       .execute();
+      
     if (!deletedRows.length) {
       return void res.status(404).json({ error: "Relation not found" });
     }
+    
+    // Broadcast update to all connected clients
+    broadcastToBox(boxSong.box_id, { type: "songs_updated" });
+    
     res.status(204).end();
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
@@ -1717,6 +1747,292 @@ app.get("/api/youtube/search", async (req, res, _next: NextFunction) => {
 app.get("/healthz", (req, res) => {
   res.status(200).json({ status: "ok" });
 });
+
+// SSE endpoint for real-time updates
+app.get("/api/boxes/:boxId/events", 
+  (req, res) => {
+    const { boxId } = req.params;
+    
+    // Verify box exists
+    db.selectFrom("boxes")
+      .selectAll()
+      .where("id", "=", boxId)
+      .executeTakeFirst()
+      .then(box => {
+        if (!box) {
+          return res.status(404).json({ error: "Box not found" });
+        }
+        
+        // Set SSE headers
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        
+        // Send initial connection event
+        res.write(`data: ${JSON.stringify({ type: "connected", boxId })}\n\n`);
+        
+        // Store client connection
+        const clientId = randomUUID();
+        if (!global.sseClients) {
+          global.sseClients = new Map();
+        }
+        if (!global.sseClients.has(boxId)) {
+          global.sseClients.set(boxId, new Map());
+        }
+        global.sseClients.get(boxId)!.set(clientId, res);
+        
+        // Heartbeat to keep connection alive
+        const heartbeat = setInterval(() => {
+          res.write(":heartbeat\n\n");
+        }, 30000);
+        
+        // Clean up on disconnect
+        req.on("close", () => {
+          clearInterval(heartbeat);
+          const boxClients = global.sseClients?.get(boxId);
+          if (boxClients) {
+            boxClients.delete(clientId);
+            if (boxClients.size === 0) {
+              global.sseClients?.delete(boxId);
+            }
+          }
+        });
+      })
+      .catch(error => {
+        res.status(500).json({ error: "Database error" });
+      });
+  });
+
+// Get playback state
+app.get("/api/boxes/:boxId/playback-state", 
+  (req, res, _next: NextFunction) => {
+  const { boxId } = req.params;
+  
+  db.selectFrom("box_playback_state")
+    .selectAll()
+    .where("box_id", "=", boxId)
+    .executeTakeFirst()
+    .then(state => {
+      if (!state) {
+        return res.json({
+          box_id: boxId,
+          current_song_id: null,
+          leader_user_id: null,
+          is_playing: false,
+          playback_position: 0
+        });
+      }
+      
+      // Calculate actual position based on time elapsed
+      const now = new Date();
+      const elapsed = (now.getTime() - new Date(state.position_updated_at).getTime()) / 1000;
+      const actualPosition = state.is_playing ? state.playback_position + elapsed : state.playback_position;
+      
+      res.json({
+        ...state,
+        playback_position: actualPosition
+      });
+    })
+    .catch(error => {
+      console.error("Failed to get playback state:", error);
+      res.status(500).json({ error: "Failed to get playback state" });
+    });
+});
+
+// Update playback state
+app.put("/api/boxes/:boxId/playback-state", 
+  (req, res, _next: NextFunction) => {
+  const { boxId } = req.params;
+  const { current_song_id, is_playing, playback_position, user_id } = req.body;
+  
+  // Check if user can become leader
+  db.selectFrom("box_playback_state")
+    .selectAll()
+    .where("box_id", "=", boxId)
+    .executeTakeFirst()
+    .then(existingState => {
+      // If no leader or user is current leader, allow update
+      if (existingState && existingState.leader_user_id && existingState.leader_user_id !== user_id) {
+        res.status(403).json({ error: "Another user is currently leading playback" });
+        return;
+      }
+      
+      const state = {
+        box_id: boxId,
+        current_song_id,
+        leader_user_id: user_id,
+        is_playing,
+        playback_position,
+        position_updated_at: new Date(),
+        updated_at: new Date()
+      };
+      
+      // Upsert the state
+      return db
+        .insertInto("box_playback_state")
+        .values({ id: randomUUID(), ...state, created_at: new Date() })
+        .onConflict((oc) => oc.column("box_id").doUpdateSet(state))
+        .execute()
+        .then(() => {
+          // Broadcast to all clients
+          broadcastToBox(boxId, {
+            type: "playback_state_changed",
+            state: {
+              ...state,
+              playback_position: playback_position
+            }
+          });
+          
+          res.json({ success: true });
+        });
+    })
+    .catch(error => {
+      console.error("Failed to update playback state:", error);
+      res.status(500).json({ error: "Failed to update playback state" });
+    });
+});
+
+// Release leadership
+app.delete("/api/boxes/:boxId/playback-state/leader", 
+  (req, res, _next: NextFunction) => {
+  const { boxId } = req.params;
+  const { user_id } = req.body;
+  
+  db.updateTable("box_playback_state")
+    .set({ leader_user_id: null })
+    .where("box_id", "=", boxId)
+    .where("leader_user_id", "=", user_id)
+    .execute()
+    .then(() => {
+      broadcastToBox(boxId, {
+        type: "leader_released"
+      });
+      
+      res.json({ success: true });
+    })
+    .catch(error => {
+      console.error("Failed to release leadership:", error);
+      res.status(500).json({ error: "Failed to release leadership" });
+    });
+});
+
+// Vote to skip current song
+app.post("/api/boxes/:boxId/vote-skip", (req, res, _next: NextFunction) => {
+  const { boxId } = req.params;
+  const { user_id, song_id } = req.body;
+  
+  // Insert vote (will fail if duplicate due to unique constraint)
+  db.insertInto("skip_votes")
+    .values({
+      id: randomUUID(),
+      box_id: boxId,
+      song_id,
+      user_id,
+      created_at: new Date()
+    })
+    .execute()
+    .then(() => {
+      // Count total votes for this song
+      return db
+        .selectFrom("skip_votes")
+        .select(db.fn.count("id").as("count"))
+        .where("box_id", "=", boxId)
+        .where("song_id", "=", song_id)
+        .executeTakeFirstOrThrow();
+    })
+    .then(voteCount => {
+      // Count active listeners (users who received SSE messages in last 5 minutes)
+      const activeUsers = global.sseClients?.get(boxId)?.size || 1;
+      const threshold = Math.floor(activeUsers / 2) + 1; // Majority
+      
+      // Broadcast vote update
+      broadcastToBox(boxId, {
+        type: "skip_vote_update",
+        song_id,
+        vote_count: Number(voteCount.count),
+        threshold,
+        voter_id: user_id
+      });
+      
+      // If threshold reached, skip the song
+      if (Number(voteCount.count) >= threshold) {
+        // Update song status to played
+        db.updateTable("box_songs")
+          .set({ status: "played" })
+          .where("id", "=", song_id)
+          .execute()
+          .then(() => {
+            // Clear votes for this song
+            return db
+              .deleteFrom("skip_votes")
+              .where("box_id", "=", boxId)
+              .where("song_id", "=", song_id)
+              .execute();
+          })
+          .then(() => {
+            // Broadcast skip event
+            broadcastToBox(boxId, {
+              type: "song_skipped",
+              song_id,
+              reason: "vote"
+            });
+          })
+          .catch(error => {
+            console.error("Failed to skip song:", error);
+          });
+      }
+      
+      res.json({ 
+        success: true, 
+        vote_count: Number(voteCount.count),
+        threshold 
+      });
+    })
+    .catch((error: any) => {
+      if (error.code === "SQLITE_CONSTRAINT") {
+        return res.status(400).json({ error: "Already voted" });
+      }
+      console.error("Failed to vote:", error);
+      res.status(500).json({ error: "Failed to vote" });
+    });
+});
+
+// Get current votes for a song
+app.get("/api/boxes/:boxId/songs/:songId/votes", (req, res, _next: NextFunction) => {
+  const { boxId, songId } = req.params;
+  
+  db.selectFrom("skip_votes")
+    .select(["user_id", "created_at"])
+    .where("box_id", "=", boxId)
+    .where("song_id", "=", songId)
+    .execute()
+    .then(votes => {
+      const activeUsers = global.sseClients?.get(boxId)?.size || 1;
+      const threshold = Math.floor(activeUsers / 2) + 1;
+      
+      res.json({
+        votes,
+        vote_count: votes.length,
+        threshold
+      });
+    })
+    .catch(error => {
+      console.error("Failed to get votes:", error);
+      res.status(500).json({ error: "Failed to get votes" });
+    });
+});
+
+// Helper function to broadcast events
+function broadcastToBox(boxId: string, event: any) {
+  const boxClients = global.sseClients?.get(boxId);
+  if (boxClients) {
+    const data = `data: ${JSON.stringify(event)}\n\n`;
+    boxClients.forEach((client) => {
+      client.write(data);
+    });
+  }
+}
 
 const server = http.createServer(app);
 if (require.main === module) {

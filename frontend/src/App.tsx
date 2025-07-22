@@ -5,53 +5,37 @@ import SharePage from "@/pages/SharePage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { Layout } from "@/components/ui/layout";
 import { JukeboxProvider } from "@/contexts/JukeboxContext";
+import { SyncProvider } from "@/contexts/SyncContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ConnectionStatus } from "@/components/ConnectionStatus";
+import { Toaster } from "sonner";
+
+function AppProviders({ children }: { children: React.ReactNode }) {
+  return (
+    <JukeboxProvider>
+      <SyncProvider>
+        <Layout>
+          {children}
+          <ConnectionStatus />
+        </Layout>
+      </SyncProvider>
+    </JukeboxProvider>
+  );
+}
 
 function App() {
   return (
-    <BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Toaster richColors />
       <Routes>
-        <Route
-          path="/"
-          element={
-            <JukeboxProvider>
-              <Layout>
-                <HomePage />
-              </Layout>
-            </JukeboxProvider>
-          }
-        />
-        <Route
-          path="/play/:boxSlug"
-          element={
-            <JukeboxProvider>
-              <Layout>
-                <PlayPage />
-              </Layout>
-            </JukeboxProvider>
-          }
-        />
-        <Route
-          path="/share/:boxSlug"
-          element={
-            <JukeboxProvider>
-              <Layout>
-                <SharePage />
-              </Layout>
-            </JukeboxProvider>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <JukeboxProvider>
-              <Layout>
-                <ProfilePage />
-              </Layout>
-            </JukeboxProvider>
-          }
-        />
+        <Route path="/" element={<AppProviders><HomePage /></AppProviders>} />
+        <Route path="/play/:boxSlug" element={<AppProviders><PlayPage /></AppProviders>} />
+        <Route path="/share/:boxSlug" element={<AppProviders><SharePage /></AppProviders>} />
+        <Route path="/profile" element={<AppProviders><ProfilePage /></AppProviders>} />
       </Routes>
     </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 

@@ -1,14 +1,25 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Play, Pause, SkipForward, SkipBack, Download } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, Download, Users } from "lucide-react";
 import { useJukebox } from "@/hooks/useJukeboxContext";
+import { useSync } from "@/hooks/useSync";
 import { updateBoxSong, getYouTubeAudioSignedUrl } from "@/sdk";
 import type { SongRow } from "@/lib/player";
 import { motion } from "framer-motion";
+import { VoteSkip } from "@/components/VoteSkip";
+import { VolumeSlider } from "@/components/VolumeSlider";
 
 export const YouTubePlayer = () => {
   const { songs, currentSongIndex, goToPrevious, goToNext } = useJukebox();
+  const { 
+    isListeningAlong, 
+    isLeader, 
+    playbackState, 
+    startListeningAlong, 
+    stopListeningAlong,
+    updatePlaybackState 
+  } = useSync();
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -310,6 +321,54 @@ export const YouTubePlayer = () => {
     goToNext,
   ]);
 
+  // Sync with leader when listening along
+  useEffect(() => {
+    if (!isListeningAlong || isLeader || !playbackState || !audioRef.current) return;
+    
+    const audio = audioRef.current;
+    const targetSongId = playbackState.current_song_id;
+    const targetPosition = playbackState.playback_position;
+    const isTargetPlaying = playbackState.is_playing;
+    
+    // Check if we need to switch songs
+    if (targetSongId && currentSong?.id !== targetSongId) {
+      const targetIndex = songs.findIndex(s => s.id === targetSongId);
+      if (targetIndex >= 0 && targetIndex !== currentSongIndex) {
+        goToNext(); // This will eventually lead to the correct song
+        return;
+      }
+    }
+    
+    // Sync position if drift > 1 second
+    const currentPos = audio.currentTime;
+    const drift = Math.abs(currentPos - targetPosition);
+    if (drift > 1) {
+      audio.currentTime = targetPosition;
+    }
+    
+    // Sync play/pause state
+    if (isTargetPlaying && audio.paused) {
+      audio.play().catch(console.error);
+    } else if (!isTargetPlaying && !audio.paused) {
+      audio.pause();
+    }
+  }, [isListeningAlong, isLeader, playbackState, currentSong?.id, songs, currentSongIndex, goToNext]);
+
+  // Update server state when we're the leader
+  useEffect(() => {
+    if (!isListeningAlong || !isLeader || !currentSong) return;
+    
+    const updateInterval = setInterval(() => {
+      updatePlaybackState({
+        current_song_id: currentSong.id,
+        is_playing: isPlaying,
+        playback_position: audioRef.current?.currentTime || 0
+      });
+    }, 1000);
+    
+    return () => clearInterval(updateInterval);
+  }, [isListeningAlong, isLeader, currentSong, isPlaying, updatePlaybackState]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -333,6 +392,7 @@ export const YouTubePlayer = () => {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.4 }}
+                  className="relative"
                 >
                   {/* Hidden audio element */}
                   <audio
@@ -383,6 +443,17 @@ export const YouTubePlayer = () => {
                       </a>
                     )}
                   </div>
+                  {/* Loading Overlay */}
+                  {isLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur rounded-lg">
+                      <div className="space-y-2 text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-main mx-auto" />
+                        <p className="text-sm text-muted-foreground">
+                          {mediaUrl ? "Buffering..." : "Loading audio..."}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   {/* Progress Bar */}
                   <div className="space-y-2 mt-4">
                     <div
@@ -403,6 +474,10 @@ export const YouTubePlayer = () => {
                       <span>{formatTime(currentTime)}</span>
                       <span>{formatTime(duration)}</span>
                     </div>
+                  </div>
+                  {/* Volume Control */}
+                  <div className="mt-2 flex justify-center">
+                    <VolumeSlider audioRef={audioRef} />
                   </div>
                   {/* Player Controls */}
                   <div className="flex items-center justify-center gap-4 mt-4">
@@ -435,6 +510,23 @@ export const YouTubePlayer = () => {
                     >
                       <SkipForward className="h-4 w-4" />
                     </Button>
+                    {/* Listen Along Button */}
+                    <Button
+                      variant={isListeningAlong ? "default" : "neutral"}
+                      size="sm"
+                      onClick={isListeningAlong ? stopListeningAlong : startListeningAlong}
+                      className="ml-4"
+                    >
+                      <Users className="h-4 w-4 mr-2" />
+                      {isListeningAlong 
+                        ? (isLeader ? "Leading" : "Listening Along")
+                        : "Listen Along"
+                      }
+                    </Button>
+                    {/* Vote Skip */}
+                    {currentSong && isListeningAlong && (
+                      <VoteSkip songId={currentSong.id} />
+                    )}
                   </div>
                   {/* Playlist Info */}
                   <div className="text-center text-sm text-gray-600 mt-4">
