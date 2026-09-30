@@ -1263,19 +1263,32 @@ app.post("/api/box_songs", async (req, res, _next: NextFunction) => {
       return void res.status(400).json({ error: "User not found" });
     }
 
-    // Get all queued songs in this box ordered by position
+    // Songs that are playing or already played stay ahead of the queue, so a
+    // new song is never inserted before them. Inserting there shifts the
+    // player's current index onto a different song.
+    const lastStarted = await db
+      .selectFrom("box_songs")
+      .select(sql<number | null>`MAX(position)`.as("max"))
+      .where("box_id", "=", box_id)
+      .where("status", "!=", "queued")
+      .executeTakeFirst();
+    const firstQueuePosition = (lastStarted?.max ?? 0) + 1;
+
+    // Get the queued songs after that point, ordered by position
     const queuedSongs = await db
       .selectFrom("box_songs")
       .selectAll()
       .where("box_id", "=", box_id)
+      .where("status", "=", "queued")
+      .where("position", ">=", firstQueuePosition)
       .orderBy("position", "asc")
       .execute();
 
     let insertPosition: number;
 
     if (queuedSongs.length === 0) {
-      // First song in queue
-      insertPosition = 1;
+      // Nothing waiting: the new song goes right after the last started one
+      insertPosition = firstQueuePosition;
     } else {
       // Find the best position using round-robin fairness
       insertPosition = findFairPosition(queuedSongs, user_id);
